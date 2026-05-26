@@ -36,6 +36,7 @@ export interface IOrder extends Document {
   status: OrderStatus;
   paymentStatus: PaymentStatus;
   paymentMethod?: string;
+  trackingNumber?: string;
   shippingAddress: IShippingAddress;
   billingAddress?: IShippingAddress;
   notes?: string;
@@ -150,6 +151,10 @@ const OrderSchema = new Schema<IOrder>(
     },
     paymentMethod: {
       type: String,
+    },
+    trackingNumber: {
+      type: String,
+      trim: true,
     },
     shippingAddress: {
       type: ShippingAddressSchema,

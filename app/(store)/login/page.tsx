@@ -13,6 +13,7 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isRegistered = searchParams.get("registered") === "true";
+  const redirectTo = searchParams.get("redirect") || "/";
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -38,7 +39,7 @@ function LoginForm() {
         return;
       }
 
-      router.push("/");
+      router.push(redirectTo.startsWith("/") ? redirectTo : "/");
       router.refresh();
     } catch {
       setError("เกิดข้อผิดพลาด กรุณาลองอีกครั้ง");

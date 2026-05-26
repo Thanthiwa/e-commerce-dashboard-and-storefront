@@ -1,54 +1,224 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db/connect";
-import { Order, Product, Customer } from "@/lib/db/models";
+import { Category, Customer, Order, Product } from "@/lib/db/models";
+
+const monthLabels = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+
+async function ensureDashboardData() {
+  const orderCount = await Order.countDocuments({});
+  if (orderCount > 0) {
+    return;
+  }
+
+  const category = await Category.findOneAndUpdate(
+    { slug: "dashboard-demo" },
+    {
+      $setOnInsert: {
+        name: "Dashboard Demo",
+        slug: "dashboard-demo",
+        description: "Demo data for dashboard",
+        status: "active",
+      },
+    },
+    { new: true, upsert: true }
+  );
+
+  const products = await Promise.all(
+    [
+      { name: "Wireless Bluetooth Headphones", slug: "dashboard-demo-headphones", sku: "DASH-001", price: 1490, cost: 850, quantity: 42 },
+      { name: "Smart Watch Pro", slug: "dashboard-demo-watch", sku: "DASH-002", price: 2990, cost: 1600, quantity: 28 },
+      { name: "Mechanical Keyboard", slug: "dashboard-demo-keyboard", sku: "DASH-003", price: 1290, cost: 700, quantity: 65 },
+      { name: "Minimalist Desk Lamp", slug: "dashboard-demo-lamp", sku: "DASH-004", price: 690, cost: 320, quantity: 120 },
+    ].map((product) =>
+      Product.findOneAndUpdate(
+        { sku: product.sku },
+        {
+          $setOnInsert: {
+            ...product,
+            description: `${product.name} for dashboard demo`,
+            category: category._id,
+            lowStockThreshold: 10,
+            images: ["/placeholder.svg"],
+            tags: ["dashboard"],
+            status: "active",
+          },
+        },
+        { new: true, upsert: true }
+      )
+    )
+  );
+
+  await Category.findByIdAndUpdate(category._id, { productCount: products.length });
+
+  const customers = await Promise.all(
+    [
+      { email: "dashboard.john@example.com", firstName: "John", lastName: "Smith", phone: "081-111-1111" },
+      { email: "dashboard.sarah@example.com", firstName: "Sarah", lastName: "Johnson", phone: "082-222-2222" },
+      { email: "dashboard.michael@example.com", firstName: "Michael", lastName: "Brown", phone: "083-333-3333" },
+    ].map((customer) =>
+      Customer.findOneAndUpdate(
+        { email: customer.email },
+        {
+          $setOnInsert: {
+            ...customer,
+            addresses: [
+              {
+                type: "shipping",
+                isDefault: true,
+                fullName: `${customer.firstName} ${customer.lastName}`,
+                phone: customer.phone,
+                address: "123 Dashboard Street",
+                city: "Bangkok",
+                state: "Bangkok",
+                postalCode: "10110",
+                country: "TH",
+              },
+            ],
+          },
+        },
+        { new: true, upsert: true }
+      )
+    )
+  );
+
+  const now = new Date();
+  const statuses = ["pending", "processing", "shipped", "delivered"] as const;
+
+  for (let index = 0; index < 18; index += 1) {
+    const customer = customers[index % customers.length];
+    const product = products[index % products.length];
+    const secondProduct = products[(index + 1) % products.length];
+    const createdAt = new Date(now.getFullYear(), now.getMonth() - (index % 6), Math.max(1, 25 - index));
+    const items = [product, secondProduct].map((item, itemIndex) => ({
+      product: item._id,
+      name: item.name,
+      price: item.price,
+      cost: item.cost || 0,
+      quantity: itemIndex + 1,
+    }));
+    const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const tax = subtotal * 0.08;
+    const shipping = subtotal > 1500 ? 0 : 50;
+    const orderNumber = await (Order as unknown as { generateOrderNumber: () => Promise<string> }).generateOrderNumber();
+
+    await Order.create({
+      orderNumber,
+      customer: customer._id,
+      items,
+      subtotal,
+      tax,
+      shipping,
+      discount: 0,
+      total: subtotal + tax + shipping,
+      status: statuses[index % statuses.length],
+      paymentStatus: index % 4 === 0 ? "pending" : "paid",
+      paymentMethod: index % 3 === 0 ? "cod" : "credit_card",
+      shippingAddress: {
+        fullName: `${customer.firstName} ${customer.lastName}`,
+        phone: customer.phone,
+        address: "123 Dashboard Street",
+        city: "Bangkok",
+        state: "Bangkok",
+        postalCode: "10110",
+        country: "TH",
+      },
+      billingAddress: {
+        fullName: `${customer.firstName} ${customer.lastName}`,
+        phone: customer.phone,
+        address: "123 Dashboard Street",
+        city: "Bangkok",
+        state: "Bangkok",
+        postalCode: "10110",
+        country: "TH",
+      },
+      source: "web",
+      createdAt,
+      updatedAt: createdAt,
+    });
+  }
+}
+
+function getGrowth(current: number, previous: number) {
+  if (previous === 0) {
+    return current > 0 ? 100 : 0;
+  }
+
+  return Number((((current - previous) / previous) * 100).toFixed(1));
+}
 
 export async function GET() {
   try {
     await dbConnect();
+    await ensureDashboardData();
 
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const prevThirtyDays = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
 
-    // Current period stats
     const [
-      totalRevenue,
-      ordersThisMonth,
+      currentRevenueResult,
+      previousRevenueResult,
+      ordersThisPeriod,
+      ordersPreviousPeriod,
+      customersThisPeriod,
+      customersPreviousPeriod,
       totalCustomers,
+      productsThisPeriod,
+      productsPreviousPeriod,
       totalProducts,
-      prevMonthOrders,
       recentOrders,
       lowStockProducts,
     ] = await Promise.all([
       Order.aggregate([
-        { $match: { status: { $ne: "cancelled" }, createdAt: { $gte: thirtyDaysAgo } } },
+        { $match: { status: { $nin: ["cancelled", "refunded"] }, createdAt: { $gte: thirtyDaysAgo } } },
+        { $group: { _id: null, total: { $sum: "$total" } } },
+      ]),
+      Order.aggregate([
+        { $match: { status: { $nin: ["cancelled", "refunded"] }, createdAt: { $gte: prevThirtyDays, $lt: thirtyDaysAgo } } },
         { $group: { _id: null, total: { $sum: "$total" } } },
       ]),
       Order.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
-      Customer.countDocuments({ status: "active" }),
+      Order.countDocuments({ createdAt: { $gte: prevThirtyDays, $lt: thirtyDaysAgo } }),
+      Customer.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+      Customer.countDocuments({ createdAt: { $gte: prevThirtyDays, $lt: thirtyDaysAgo } }),
+      Customer.countDocuments({}),
+      Product.countDocuments({ status: "active", createdAt: { $gte: thirtyDaysAgo } }),
+      Product.countDocuments({ status: "active", createdAt: { $gte: prevThirtyDays, $lt: thirtyDaysAgo } }),
       Product.countDocuments({ status: "active" }),
-      Order.aggregate([
-        { $match: { status: { $ne: "cancelled" }, createdAt: { $gte: prevThirtyDays, $lt: thirtyDaysAgo } } },
-        { $group: { _id: null, total: { $sum: "$total" } } },
-      ]),
       Order.find()
         .sort({ createdAt: -1 })
         .limit(5)
         .populate("customer", "firstName lastName email")
         .lean(),
-      Product.find({ $expr: { $lte: ["$stock", "$reorderPoint"] } })
-        .select("name sku stock reorderPoint")
+      Product.find({ $expr: { $lte: ["$quantity", "$lowStockThreshold"] } })
+        .select("name sku quantity lowStockThreshold")
         .limit(10)
         .lean(),
     ]);
 
-    const currentRevenue = totalRevenue[0]?.total || 0;
-    const previousRevenue = prevMonthOrders[0]?.total || 0;
-    const revenueGrowth = previousRevenue > 0 ? ((currentRevenue - previousRevenue) / previousRevenue) * 100 : 0;
+    const currentRevenue = currentRevenueResult[0]?.total || 0;
+    const previousRevenue = previousRevenueResult[0]?.total || 0;
 
-    // Sales by category
+    const monthlyRevenueRaw = await Order.aggregate([
+      { $match: { status: { $nin: ["cancelled", "refunded"] }, createdAt: { $gte: startOfYear } } },
+      {
+        $group: {
+          _id: { $month: "$createdAt" },
+          revenue: { $sum: "$total" },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    const monthlyRevenueByMonth = new Map(monthlyRevenueRaw.map((item) => [Number(item._id), Number(item.revenue || 0)]));
+    const monthlyRevenue = monthLabels.map((month, index) => ({
+      month,
+      revenue: monthlyRevenueByMonth.get(index + 1) || 0,
+    }));
+
     const salesByCategory = await Order.aggregate([
-      { $match: { status: { $ne: "cancelled" }, createdAt: { $gte: thirtyDaysAgo } } },
+      { $match: { status: { $nin: ["cancelled", "refunded"] }, createdAt: { $gte: thirtyDaysAgo } } },
       { $unwind: "$items" },
       {
         $lookup: {
@@ -58,7 +228,7 @@ export async function GET() {
           as: "product",
         },
       },
-      { $unwind: "$product" },
+      { $unwind: { path: "$product", preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
           from: "categories",
@@ -70,8 +240,8 @@ export async function GET() {
       { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
       {
         $group: {
-          _id: "$category.name",
-          revenue: { $sum: "$items.total" },
+          _id: { $ifNull: ["$category.name", "ไม่ระบุหมวดหมู่"] },
+          revenue: { $sum: { $multiply: ["$items.price", "$items.quantity"] } },
           orders: { $sum: 1 },
         },
       },
@@ -79,32 +249,28 @@ export async function GET() {
       { $limit: 5 },
     ]);
 
-    // Daily revenue for chart (last 7 days)
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const dailyRevenue = await Order.aggregate([
-      { $match: { status: { $ne: "cancelled" }, createdAt: { $gte: sevenDaysAgo } } },
-      {
-        $group: {
-          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-          revenue: { $sum: "$total" },
-          orders: { $sum: 1 },
-        },
-      },
-      { $sort: { _id: 1 } },
-    ]);
+    const totalCategoryRevenue = salesByCategory.reduce((sum, category) => sum + Number(category.revenue || 0), 0);
 
-    // Top products
     const topProducts = await Order.aggregate([
-      { $match: { status: { $ne: "cancelled" }, createdAt: { $gte: thirtyDaysAgo } } },
+      { $match: { status: { $nin: ["cancelled", "refunded"] }, createdAt: { $gte: thirtyDaysAgo } } },
       { $unwind: "$items" },
       {
         $group: {
           _id: "$items.product",
-          name: { $first: "$items.productName" },
-          totalSold: { $sum: "$items.quantity" },
-          revenue: { $sum: "$items.total" },
+          name: { $first: "$items.name" },
+          sales: { $sum: "$items.quantity" },
+          revenue: { $sum: { $multiply: ["$items.price", "$items.quantity"] } },
         },
       },
+      {
+        $lookup: {
+          from: "products",
+          localField: "_id",
+          foreignField: "_id",
+          as: "product",
+        },
+      },
+      { $unwind: { path: "$product", preserveNullAndEmptyArrays: true } },
       { $sort: { revenue: -1 } },
       { $limit: 5 },
     ]);
@@ -112,32 +278,47 @@ export async function GET() {
     return NextResponse.json({
       summary: {
         totalRevenue: currentRevenue,
-        revenueGrowth,
-        ordersThisMonth,
+        revenueGrowth: getGrowth(currentRevenue, previousRevenue),
+        ordersThisMonth: ordersThisPeriod,
+        ordersGrowth: getGrowth(ordersThisPeriod, ordersPreviousPeriod),
         totalCustomers,
+        customersGrowth: getGrowth(customersThisPeriod, customersPreviousPeriod),
         totalProducts,
-        averageOrderValue: ordersThisMonth > 0 ? currentRevenue / ordersThisMonth : 0,
+        productsGrowth: getGrowth(productsThisPeriod, productsPreviousPeriod),
+        averageOrderValue: ordersThisPeriod > 0 ? currentRevenue / ordersThisPeriod : 0,
       },
-      recentOrders: recentOrders.map((order) => ({
-        id: order._id,
+      recentOrders: recentOrders.map((order: any) => ({
+        id: String(order._id),
         orderNumber: order.orderNumber,
-        customer: order.customer ? `${(order.customer as { firstName: string }).firstName} ${(order.customer as { lastName: string }).lastName}` : "Unknown",
+        customer: order.customer ? `${order.customer.firstName || ""} ${order.customer.lastName || ""}`.trim() : "ไม่ระบุลูกค้า",
+        email: order.customer?.email || "",
         total: order.total,
         status: order.status,
         date: order.createdAt,
       })),
-      salesByCategory: salesByCategory.map((cat) => ({
-        name: cat._id || "Uncategorized",
-        revenue: cat.revenue,
-        orders: cat.orders,
+      salesByCategory: salesByCategory.map((category, index) => ({
+        name: category._id,
+        revenue: category.revenue,
+        orders: category.orders,
+        value: totalCategoryRevenue > 0 ? Number(((category.revenue / totalCategoryRevenue) * 100).toFixed(1)) : 0,
+        color: ["oklch(0.696 0.17 162.48)", "oklch(0.488 0.243 264.376)", "oklch(0.769 0.188 70.08)", "oklch(0.627 0.265 303.9)", "oklch(0.645 0.246 16.439)"][index],
       })),
-      dailyRevenue: dailyRevenue.map((day) => ({
-        date: day._id,
-        revenue: day.revenue,
-        orders: day.orders,
+      monthlyRevenue,
+      topProducts: topProducts.map((product) => ({
+        id: String(product._id || product.name),
+        name: product.name,
+        sku: product.product?.sku,
+        sales: product.sales,
+        revenue: product.revenue,
+        stock: product.product?.quantity,
       })),
-      topProducts,
-      lowStockProducts,
+      lowStockProducts: lowStockProducts.map((product: any) => ({
+        id: String(product._id),
+        name: product.name,
+        sku: product.sku,
+        stock: product.quantity,
+        reorderPoint: product.lowStockThreshold,
+      })),
     });
   } catch (error) {
     console.error("Dashboard API error:", error);

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useCallback, useContext, useState, useEffect, ReactNode } from "react";
 
 export interface CartItem {
   id: string;
@@ -9,6 +9,7 @@ export interface CartItem {
   price: number;
   quantity: number;
   image: string;
+  stock?: number;
   variant?: string;
 }
 
@@ -16,6 +17,7 @@ interface CartContextType {
   items: CartItem[];
   addItem: (item: Omit<CartItem, "quantity">, quantity?: number) => void;
   removeItem: (id: string) => void;
+  updateItemStock: (id: string, stock: number) => void;
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
   totalItems: number;
@@ -23,6 +25,11 @@ interface CartContextType {
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
+
+function limitQuantityByStock(quantity: number, stock?: number) {
+  const safeQuantity = Math.max(1, quantity);
+  return typeof stock === "number" ? Math.min(stock, safeQuantity) : safeQuantity;
+}
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
@@ -44,35 +51,78 @@ export function CartProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("cart", JSON.stringify(items));
   }, [items]);
 
-  const addItem = (newItem: Omit<CartItem, "quantity">, quantity = 1) => {
+  const addItem = useCallback((newItem: Omit<CartItem, "quantity">, quantity = 1) => {
     setItems((prevItems) => {
       const existingItem = prevItems.find((item) => item.id === newItem.id);
+      const nextQuantity = limitQuantityByStock(quantity, newItem.stock);
+      if (nextQuantity <= 0) {
+        return prevItems;
+      }
+
       if (existingItem) {
         return prevItems.map((item) =>
-          item.id === newItem.id ? { ...item, ...newItem, quantity: item.quantity + quantity } : item
+          item.id === newItem.id
+            ? {
+                ...item,
+                ...newItem,
+                quantity: limitQuantityByStock(item.quantity + quantity, newItem.stock),
+              }
+            : item
         );
       }
-      return [...prevItems, { ...newItem, quantity }];
+      return [...prevItems, { ...newItem, quantity: nextQuantity }];
     });
-  };
+  }, []);
 
-  const removeItem = (id: string) => {
+  const removeItem = useCallback((id: string) => {
     setItems((prevItems) => prevItems.filter((item) => item.id !== id));
-  };
+  }, []);
 
-  const updateQuantity = (id: string, quantity: number) => {
+  const updateItemStock = useCallback((id: string, stock: number) => {
+    setItems((prevItems) => {
+      if (stock <= 0) {
+        return prevItems.some((item) => item.id === id)
+          ? prevItems.filter((item) => item.id !== id)
+          : prevItems;
+      }
+
+      let hasChanges = false;
+      const nextItems = prevItems.map((item) => {
+        if (item.id !== id) {
+          return item;
+        }
+
+        const nextQuantity = limitQuantityByStock(item.quantity, stock);
+        if (item.stock !== stock || item.quantity !== nextQuantity) {
+          hasChanges = true;
+        }
+
+        return {
+          ...item,
+          stock,
+          quantity: nextQuantity,
+        };
+      });
+
+      return hasChanges ? nextItems : prevItems;
+    });
+  }, []);
+
+  const updateQuantity = useCallback((id: string, quantity: number) => {
     if (quantity <= 0) {
       removeItem(id);
       return;
     }
     setItems((prevItems) =>
-      prevItems.map((item) => (item.id === id ? { ...item, quantity } : item))
+      prevItems.map((item) =>
+        item.id === id ? { ...item, quantity: limitQuantityByStock(quantity, item.stock) } : item
+      )
     );
-  };
+  }, [removeItem]);
 
-  const clearCart = () => {
+  const clearCart = useCallback(() => {
     setItems([]);
-  };
+  }, []);
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -83,6 +133,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         items,
         addItem,
         removeItem,
+        updateItemStock,
         updateQuantity,
         clearCart,
         totalItems,

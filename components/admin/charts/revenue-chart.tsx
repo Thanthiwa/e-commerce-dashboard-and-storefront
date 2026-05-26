@@ -2,7 +2,7 @@
 
 import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 
-const data = [
+const defaultData = [
   { month: "ม.ค.", revenue: 18500 },
   { month: "ก.พ.", revenue: 22300 },
   { month: "มี.ค.", revenue: 19800 },
@@ -17,7 +17,7 @@ const data = [
   { month: "ธ.ค.", revenue: 52300 },
 ];
 
-export function RevenueChart() {
+export function RevenueChart({ data = defaultData }: { data?: Array<{ month: string; revenue: number }> }) {
   return (
     <ResponsiveContainer width="100%" height={300}>
       <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>

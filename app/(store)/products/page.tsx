@@ -284,6 +284,7 @@ export default function ProductsPage() {
                     compareAtPrice: product.compareAtPrice,
                     image: product.images[0],
                     category: product.category,
+                    stock: product.quantity,
                     badge: product.status === "active" ? undefined : product.status === "draft" ? "ฉบับร่าง" : "เก็บถาวร",
                   }}
                 />

@@ -229,6 +229,7 @@ export default function ProductDetailPage() {
                     name: product.name,
                     price: product.price,
                     image: product.images[0],
+                    stock: product.stock,
                     variant: selectedVariantLabel || undefined,
                   },
                   quantity
@@ -305,6 +306,7 @@ export default function ProductDetailPage() {
                   price: relatedProduct.price,
                   image: relatedProduct.images?.[0] || placeholderImage,
                   category: typeof relatedProduct.category === "object" ? relatedProduct.category.name : relatedProduct.category,
+                  stock: relatedProduct.quantity ?? 0,
                 }}
               />
             ))

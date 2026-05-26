@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Store, Search, ShoppingCart, Menu, User, LogOut } from "lucide-react";
+import { Bell, Store, Search, ShoppingCart, Menu, User, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/lib/store/cart-context";
 import {
@@ -24,12 +24,69 @@ const navLinks = [
   { href: "/categories", label: "หมวดหมู่" },
 ];
 
+interface StoreNotification {
+  id: string;
+  orderNumber: string;
+  status: string;
+  title: string;
+  message: string;
+  createdAt: string;
+}
+
+const statusLabels: Record<string, string> = {
+  pending: "รอดำเนินการ",
+  processing: "กำลังเตรียม",
+  shipped: "จัดส่งแล้ว",
+  delivered: "ส่งถึงแล้ว",
+  cancelled: "ยกเลิกแล้ว",
+  refunded: "คืนเงินแล้ว",
+};
+
+function getNotificationKey(notification: StoreNotification) {
+  return `${notification.id}:${notification.status}:${notification.createdAt}`;
+}
+
+function getReadNotificationStorageKey(userEmail?: string) {
+  return `storefront-read-notifications:${userEmail || "guest"}`;
+}
+
 export function StoreHeader() {
   const pathname = usePathname();
   const router = useRouter();
   const { totalItems } = useCart();
   const [user, setUser] = useState<{ name: string; email: string } | null>(null);
+  const [notifications, setNotifications] = useState<StoreNotification[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const getReadNotificationKeys = () => {
+    if (typeof window === "undefined") {
+      return new Set<string>();
+    }
+
+    try {
+      const saved = localStorage.getItem(getReadNotificationStorageKey(user?.email));
+      return new Set<string>(saved ? JSON.parse(saved) : []);
+    } catch {
+      return new Set<string>();
+    }
+  };
+
+  const saveReadNotificationKeys = (keys: Set<string>) => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    localStorage.setItem(getReadNotificationStorageKey(user?.email), JSON.stringify([...keys]));
+  };
+
+  const markNotificationAsRead = (notification: StoreNotification) => {
+    const readKeys = getReadNotificationKeys();
+    readKeys.add(getNotificationKey(notification));
+    saveReadNotificationKeys(readKeys);
+    setNotifications((current) =>
+      current.filter((item) => getNotificationKey(item) !== getNotificationKey(notification))
+    );
+  };
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -47,6 +104,33 @@ export function StoreHeader() {
     };
     fetchUser();
   }, [pathname]); // Re-fetch when pathname changes (e.g. after login)
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (!user) {
+        setNotifications([]);
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/storefront/orders/me", { cache: "no-store" });
+        if (!res.ok) {
+          return;
+        }
+
+        const data = await res.json();
+        const readKeys = getReadNotificationKeys();
+        const nextNotifications = Array.isArray(data.notifications) ? data.notifications : [];
+        setNotifications(
+          nextNotifications.filter((notification: StoreNotification) => !readKeys.has(getNotificationKey(notification)))
+        );
+      } catch (error) {
+        console.error("โหลดการแจ้งเตือนไม่สำเร็จ", error);
+      }
+    };
+
+    fetchNotifications();
+  }, [user, pathname]);
 
   const handleLogout = async () => {
     try {
@@ -121,28 +205,67 @@ export function StoreHeader() {
             {/* Account */}
             {!loading && (
               user ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="flex items-center gap-2 px-2">
-                      <User className="h-5 w-5" />
-                      <span className="hidden sm:inline-block max-w-[100px] truncate">{user.name}</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuLabel>บัญชีของฉัน</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link href="/profile" className="flex items-center gap-2 cursor-pointer">
-                        <User className="h-4 w-4" />
-                        <span>ตั้งค่าโปรไฟล์</span>
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="flex items-center gap-2 cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50" onClick={handleLogout}>
-                      <LogOut className="h-4 w-4" />
-                      <span>ออกจากระบบ</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="relative">
+                        <Bell className="h-5 w-5" />
+                        {notifications.length > 0 && (
+                          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium text-primary-foreground">
+                            {notifications.length}
+                          </span>
+                        )}
+                        <span className="sr-only">การแจ้งเตือน</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-80">
+                      <DropdownMenuLabel>การแจ้งเตือน</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {notifications.length > 0 ? (
+                        notifications.map((notification) => (
+                          <DropdownMenuItem key={notification.id} asChild>
+                            <Link
+                              href="/profile"
+                              className="flex cursor-pointer flex-col items-start gap-1"
+                              onClick={() => markNotificationAsRead(notification)}
+                            >
+                              <span className="text-sm font-medium">{notification.title}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {notification.orderNumber} · {statusLabels[notification.status] || notification.status}
+                              </span>
+                              <span className="text-xs text-muted-foreground">{notification.message}</span>
+                            </Link>
+                          </DropdownMenuItem>
+                        ))
+                      ) : (
+                        <DropdownMenuItem disabled>ยังไม่มีการแจ้งเตือน</DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="flex items-center gap-2 px-2">
+                        <User className="h-5 w-5" />
+                        <span className="hidden sm:inline-block max-w-[100px] truncate">{user.name}</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuLabel>บัญชีของฉัน</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link href="/profile" className="flex items-center gap-2 cursor-pointer">
+                          <User className="h-4 w-4" />
+                          <span>ตั้งค่าโปรไฟล์</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="flex items-center gap-2 cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50" onClick={handleLogout}>
+                        <LogOut className="h-4 w-4" />
+                        <span>ออกจากระบบ</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </>
               ) : (
                 <Button variant="ghost" size="icon" asChild>
                   <Link href="/login">

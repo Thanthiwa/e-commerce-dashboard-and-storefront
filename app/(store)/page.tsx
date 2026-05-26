@@ -64,6 +64,7 @@ async function getHomeData() {
       price: product.price,
       compareAtPrice: product.compareAtPrice,
       image: product.images?.[0] || productImageFallback,
+      stock: product.quantity ?? 0,
       category:
         typeof product.category === "object" && product.category && "name" in product.category
           ? String(product.category.name)

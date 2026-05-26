@@ -51,6 +51,8 @@ export default function CheckoutPage() {
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState("");
   const [shippingAddress, setShippingAddress] = useState(emptyShippingAddress);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const totals = useMemo(() => {
     const shipping = totalPrice > 50 || totalPrice === 0 ? 0 : 9.99;
@@ -75,11 +77,25 @@ export default function CheckoutPage() {
   };
 
   useEffect(() => {
-    const fetchSavedAddress = async () => {
+    const fetchCheckoutProfile = async () => {
+      let hasAuthenticatedSession = false;
+
       try {
+        const authResponse = await fetch("/api/storefront/auth/me");
+        const authData = await authResponse.json();
+
+        if (!authData.user) {
+          router.replace("/login?redirect=/checkout");
+          return;
+        }
+
+        hasAuthenticatedSession = true;
+        setIsAuthenticated(true);
+
         const response = await fetch("/api/storefront/profile");
 
         if (response.status === 401) {
+          router.replace("/login?redirect=/checkout");
           return;
         }
 
@@ -108,15 +124,26 @@ export default function CheckoutPage() {
         }
       } catch (err) {
         console.error("Failed to load saved checkout address", err);
+        if (!hasAuthenticatedSession) {
+          router.replace("/login?redirect=/checkout");
+        }
+      } finally {
+        setIsCheckingAuth(false);
       }
     };
 
-    fetchSavedAddress();
-  }, []);
+    fetchCheckoutProfile();
+  }, [router]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+
+    if (!isAuthenticated) {
+      router.push("/login?redirect=/checkout");
+      return;
+    }
+
     setIsSubmitting(true);
 
     const fullName = shippingAddress.fullName.trim();
@@ -204,6 +231,18 @@ export default function CheckoutPage() {
         </Card>
       </div>
     );
+  }
+
+  if (isCheckingAuth) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
   }
 
   if (items.length === 0) {

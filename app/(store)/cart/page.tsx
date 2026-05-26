@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Minus, Plus, ShoppingBag, Tag, Trash2 } from "lucide-react";
@@ -11,10 +12,57 @@ import { useCart } from "@/lib/store/cart-context";
 import { formatCurrency } from "@/lib/utils/format";
 
 export default function CartPage() {
-  const { items, removeItem, updateQuantity, clearCart, totalPrice } = useCart();
+  const { items, removeItem, updateItemStock, updateQuantity, clearCart, totalPrice } =
+    useCart();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const stockSyncItems = useMemo(
+    () => items.map((item) => ({ id: item.id, slug: item.slug })),
+    [items]
+  );
   const shipping = totalPrice > 50 || totalPrice === 0 ? 0 : 9.99;
   const tax = totalPrice * 0.08;
   const total = totalPrice + shipping + tax;
+
+  useEffect(() => {
+    const fetchAuthStatus = async () => {
+      try {
+        const res = await fetch("/api/storefront/auth/me");
+        const data = await res.json();
+        setIsAuthenticated(Boolean(data.user));
+      } catch (err) {
+        console.error("Failed to check checkout auth status", err);
+        setIsAuthenticated(false);
+      }
+    };
+
+    fetchAuthStatus();
+  }, []);
+
+  useEffect(() => {
+    if (stockSyncItems.length === 0) {
+      return;
+    }
+
+    const controller = new AbortController();
+
+    stockSyncItems.forEach(async (item) => {
+      try {
+        const res = await fetch(`/api/products/${item.slug}`, { signal: controller.signal });
+        if (!res.ok) {
+          return;
+        }
+
+        const product = await res.json();
+        updateItemStock(item.id, Number(product.quantity ?? 0));
+      } catch (err) {
+        if (!controller.signal.aborted) {
+          console.error("Failed to sync cart stock", err);
+        }
+      }
+    });
+
+    return () => controller.abort();
+  }, [stockSyncItems, updateItemStock]);
 
   if (items.length === 0) {
     return (
@@ -86,9 +134,13 @@ export default function CartPage() {
                         size="icon"
                         className="h-8 w-8"
                         onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        disabled={item.stock !== undefined && item.quantity >= item.stock}
                       >
                         <Plus className="h-3 w-3" />
                       </Button>
+                      {item.stock !== undefined && (
+                        <span className="text-xs text-muted-foreground">{item.stock} รายการในสต็อก</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -146,8 +198,8 @@ export default function CartPage() {
             </CardContent>
             <CardFooter>
               <Button className="w-full" size="lg" asChild>
-                <Link href="/checkout">
-                  ดำเนินการสั่งซื้อ
+                <Link href={isAuthenticated ? "/checkout" : "/login?redirect=/checkout"}>
+                  {isAuthenticated ? "ดำเนินการสั่งซื้อ" : "เข้าสู่ระบบเพื่อชำระเงิน"}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>

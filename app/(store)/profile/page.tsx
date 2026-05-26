@@ -8,9 +8,74 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Plus, MapPin, Trash2, Edit2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Bell, CheckCircle2, Clock, Loader2, MapPin, Package, Plus, Truck, Trash2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+
+interface StorefrontOrder {
+  _id: string;
+  orderNumber: string;
+  items: Array<{ name: string; quantity: number; price: number; variant?: string }>;
+  total: number;
+  status: string;
+  paymentStatus: string;
+  trackingNumber?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface StoreNotification {
+  id: string;
+  orderNumber: string;
+  status: string;
+  title: string;
+  message: string;
+  createdAt: string;
+}
+
+const statusLabels: Record<string, string> = {
+  pending: "รอดำเนินการ",
+  processing: "กำลังเตรียมสินค้า",
+  shipped: "จัดส่งแล้ว",
+  delivered: "ส่งถึงแล้ว",
+  cancelled: "ยกเลิกแล้ว",
+  refunded: "คืนเงินแล้ว",
+};
+
+const statusStyles: Record<string, string> = {
+  pending: "bg-yellow-500/10 text-yellow-700",
+  processing: "bg-blue-500/10 text-blue-700",
+  shipped: "bg-purple-500/10 text-purple-700",
+  delivered: "bg-emerald-500/10 text-emerald-700",
+  cancelled: "bg-red-500/10 text-red-700",
+  refunded: "bg-gray-500/10 text-gray-700",
+};
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("th-TH", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function formatMoney(value: number) {
+  return new Intl.NumberFormat("th-TH", {
+    style: "currency",
+    currency: "THB",
+  }).format(value);
+}
+
+function getStatusIcon(status: string) {
+  if (status === "shipped") return <Truck className="h-4 w-4" />;
+  if (status === "delivered") return <CheckCircle2 className="h-4 w-4" />;
+  if (status === "processing") return <Package className="h-4 w-4" />;
+  return <Clock className="h-4 w-4" />;
+}
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -22,6 +87,9 @@ export default function ProfilePage() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarUploadError, setAvatarUploadError] = useState("");
   const [avatarUploadSuccess, setAvatarUploadSuccess] = useState("");
+  const [orders, setOrders] = useState<StorefrontOrder[]>([]);
+  const [notifications, setNotifications] = useState<StoreNotification[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
   
   // Dialog State
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
@@ -67,10 +135,30 @@ export default function ProfilePage() {
         phone: data.user.phone || "",
         avatar: data.user.avatar || "",
       });
+      fetchOrders();
     } catch (err) {
       setError("โหลดโปรไฟล์ไม่สำเร็จ");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchOrders = async () => {
+    setOrdersLoading(true);
+
+    try {
+      const res = await fetch("/api/storefront/orders/me", { cache: "no-store" });
+      if (!res.ok) {
+        return;
+      }
+
+      const data = await res.json();
+      setOrders(Array.isArray(data.orders) ? data.orders : []);
+      setNotifications(Array.isArray(data.notifications) ? data.notifications : []);
+    } catch (err) {
+      console.error("โหลดคำสั่งซื้อไม่สำเร็จ", err);
+    } finally {
+      setOrdersLoading(false);
     }
   };
 
@@ -223,9 +311,10 @@ export default function ProfilePage() {
       </div>
 
       <Tabs defaultValue="general" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-[400px]">
+        <TabsList className="grid w-full grid-cols-3 max-w-[560px]">
           <TabsTrigger value="general">ข้อมูลทั่วไป</TabsTrigger>
           <TabsTrigger value="addresses">ที่อยู่</TabsTrigger>
+          <TabsTrigger value="orders">คำสั่งซื้อ</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="mt-6">
@@ -407,6 +496,118 @@ export default function ProfilePage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="orders" className="mt-6">
+          <div className="grid gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Bell className="h-5 w-5" />
+                  การแจ้งเตือน
+                </CardTitle>
+                <CardDescription>อัปเดตล่าสุดเกี่ยวกับคำสั่งซื้อของคุณ</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {notifications.length > 0 ? (
+                  <div className="space-y-3">
+                    {notifications.map((notification) => (
+                      <div key={notification.id} className="flex gap-3 rounded-md border p-3">
+                        <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
+                          {getStatusIcon(notification.status)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-medium">{notification.title}</p>
+                            <Badge variant="secondary" className={statusStyles[notification.status]}>
+                              {statusLabels[notification.status] || notification.status}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">{notification.message}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">{formatDate(notification.createdAt)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="py-6 text-center text-muted-foreground">ยังไม่มีการแจ้งเตือนคำสั่งซื้อ</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between gap-4">
+                <div>
+                  <CardTitle>สถานะสินค้าที่สั่งซื้อ</CardTitle>
+                  <CardDescription>ติดตามสถานะ เลขพัสดุ และรายการสินค้าของแต่ละคำสั่งซื้อ</CardDescription>
+                </div>
+                <Button variant="outline" size="sm" onClick={fetchOrders} disabled={ordersLoading}>
+                  {ordersLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  รีเฟรช
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {ordersLoading ? (
+                  <div className="flex items-center justify-center py-12 text-muted-foreground">
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    กำลังโหลดคำสั่งซื้อ...
+                  </div>
+                ) : orders.length > 0 ? (
+                  <div className="space-y-4">
+                    {orders.map((order) => (
+                      <Card key={order._id}>
+                        <CardContent className="p-4">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                              <p className="font-mono text-sm font-medium">{order.orderNumber}</p>
+                              <p className="text-xs text-muted-foreground">{formatDate(order.createdAt)}</p>
+                            </div>
+                            <Badge variant="secondary" className={statusStyles[order.status]}>
+                              {statusLabels[order.status] || order.status}
+                            </Badge>
+                          </div>
+
+                          <Separator className="my-4" />
+
+                          <div className="space-y-2">
+                            {order.items.map((item, index) => (
+                              <div key={`${order._id}-${index}`} className="flex justify-between gap-3 text-sm">
+                                <span className="min-w-0 truncate">
+                                  {item.name}
+                                  {item.variant ? ` (${item.variant})` : ""}
+                                  <span className="text-muted-foreground"> x {item.quantity}</span>
+                                </span>
+                                <span className="font-medium">{formatMoney(item.price * item.quantity)}</span>
+                              </div>
+                            ))}
+                          </div>
+
+                          <Separator className="my-4" />
+
+                          <div className="grid gap-2 text-sm sm:grid-cols-3">
+                            <div>
+                              <p className="text-muted-foreground">ยอดรวม</p>
+                              <p className="font-semibold">{formatMoney(order.total)}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">การชำระเงิน</p>
+                              <p className="font-medium">{order.paymentStatus === "paid" ? "ชำระแล้ว" : "รอชำระ/ตรวจสอบ"}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">เลขพัสดุ</p>
+                              <p className="font-mono font-medium">{order.trackingNumber || "-"}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-12 text-center text-muted-foreground">ยังไม่มีคำสั่งซื้อ</div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

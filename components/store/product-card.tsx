@@ -17,6 +17,7 @@ interface Product {
   compareAtPrice?: number;
   image: string;
   category: string;
+  stock?: number;
   badge?: string;
 }
 
@@ -60,8 +61,10 @@ export function ProductCard({ product }: { product: Product }) {
                 name: product.name,
                 price: product.price,
                 image: product.image,
+                stock: product.stock,
               })
             }
+            disabled={product.stock !== undefined && product.stock <= 0}
           >
             <ShoppingCart className="h-4 w-4" />
             <span className="sr-only">เพิ่มลงตะกร้า</span>
