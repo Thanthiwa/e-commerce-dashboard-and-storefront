@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils/format";
 
 const recentOrders = [
   {
@@ -65,7 +66,7 @@ export function RecentOrdersTable() {
             <span className="text-xs text-muted-foreground">{order.email}</span>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm font-medium">${order.total.toFixed(2)}</span>
+            <span className="text-sm font-medium">{formatCurrency(order.total)}</span>
             <Badge variant="secondary" className={cn("capitalize", statusStyles[order.status])}>
               {order.status}
             </Badge>

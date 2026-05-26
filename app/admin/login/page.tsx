@@ -31,13 +31,13 @@ export default function AdminLoginPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Login failed");
+        setError(data.error || "เข้าสู่ระบบไม่สำเร็จ");
         return;
       }
 
       router.push("/admin/dashboard");
     } catch {
-      setError("An error occurred. Please try again.");
+      setError("เกิดข้อผิดพลาด กรุณาลองอีกครั้ง");
     } finally {
       setLoading(false);
     }
@@ -50,8 +50,8 @@ export default function AdminLoginPage() {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <Store className="h-6 w-6" />
           </div>
-          <CardTitle className="text-2xl">Admin Login</CardTitle>
-          <CardDescription>Sign in to access the admin dashboard</CardDescription>
+          <CardTitle className="text-2xl">เข้าสู่ระบบผู้ดูแล</CardTitle>
+          <CardDescription>ล็อกอินเพื่อเข้าถึงแดชบอร์ดผู้ดูแลระบบ</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -89,17 +89,17 @@ export default function AdminLoginPage() {
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in...
+                  กำลังเข้าสู่ระบบ...
                 </>
               ) : (
-                "Sign In"
+                "เข้าสู่ระบบ"
               )}
             </Button>
 
             <div className="mt-4 rounded-lg bg-muted p-3 text-center text-sm text-muted-foreground">
-              <p className="font-medium">Demo Credentials</p>
-              <p>Email: admin@example.com</p>
-              <p>Password: admin123</p>
+              <p className="font-medium">บัญชีตัวอย่าง</p>
+              <p>อีเมล: admin@example.com</p>
+              <p>รหัสผ่าน: admin123</p>
             </div>
           </form>
         </CardContent>

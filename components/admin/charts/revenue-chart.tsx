@@ -29,7 +29,7 @@ export function RevenueChart() {
         </defs>
         <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.26 0 0)" vertical={false} />
         <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: "oklch(0.65 0 0)", fontSize: 12 }} dy={10} />
-        <YAxis axisLine={false} tickLine={false} tick={{ fill: "oklch(0.65 0 0)", fontSize: 12 }} tickFormatter={(value) => `$${(value / 1000).toFixed(0)}K`} dx={-10} />
+        <YAxis axisLine={false} tickLine={false} tick={{ fill: "oklch(0.65 0 0)", fontSize: 12 }} tickFormatter={(value) => `฿${(value / 1000).toFixed(0)}K`} dx={-10} />
         <Tooltip
           contentStyle={{
             backgroundColor: "oklch(0.16 0 0)",
@@ -37,7 +37,7 @@ export function RevenueChart() {
             borderRadius: "8px",
             color: "oklch(0.985 0 0)",
           }}
-          formatter={(value: number) => [`$${value.toLocaleString()}`, "Revenue"]}
+          formatter={(value: number) => [`฿${value.toLocaleString()}`, "Revenue"]}
           labelStyle={{ color: "oklch(0.65 0 0)" }}
         />
         <Area type="monotone" dataKey="revenue" stroke="oklch(0.696 0.17 162.48)" strokeWidth={2} fillOpacity={1} fill="url(#colorRevenue)" />

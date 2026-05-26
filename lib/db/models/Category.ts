@@ -60,15 +60,14 @@ CategorySchema.index({ slug: 1 });
 CategorySchema.index({ status: 1 });
 CategorySchema.index({ parent: 1 });
 
-// Pre-save hook to generate slug
-CategorySchema.pre("save", function (next) {
+// Pre-validate hook to generate slug before validation runs
+CategorySchema.pre("validate", function () {
   if (this.isModified("name") && !this.slug) {
     this.slug = this.name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)/g, "");
   }
-  next();
 });
 
 const Category: Model<ICategory> =

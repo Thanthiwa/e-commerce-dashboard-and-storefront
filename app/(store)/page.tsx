@@ -22,7 +22,7 @@ const categories = [
 ];
 
 const features = [
-  { icon: Truck, title: "Free Shipping", description: "On orders over $50" },
+  { icon: Truck, title: "Free Shipping", description: "จัดส่งฟรีเมื่อสั่งซื้อเกิน ฿50" },
   { icon: Shield, title: "Secure Payment", description: "100% secure checkout" },
   { icon: RotateCcw, title: "Easy Returns", description: "30-day return policy" },
   { icon: Headphones, title: "24/7 Support", description: "Dedicated support team" },

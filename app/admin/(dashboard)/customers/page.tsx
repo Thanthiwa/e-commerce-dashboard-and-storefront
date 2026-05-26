@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { formatCurrency } from "@/lib/utils/format";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -83,7 +84,7 @@ export default function CustomersPage() {
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">${(customers.reduce((sum, c) => sum + c.spent, 0) / customers.length).toFixed(0)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(customers.reduce((sum, c) => sum + c.spent, 0) / customers.length)}</div>
             <p className="text-xs text-muted-foreground">Avg. Lifetime Value</p>
           </CardContent>
         </Card>
@@ -150,7 +151,7 @@ export default function CustomersPage() {
                     </div>
                   </TableCell>
                   <TableCell className="text-center">{customer.orders}</TableCell>
-                  <TableCell className="text-right font-medium">${customer.spent.toFixed(2)}</TableCell>
+                  <TableCell className="text-right font-medium">{formatCurrency(customer.spent)}</TableCell>
                   <TableCell className="text-muted-foreground">{customer.lastOrder}</TableCell>
                   <TableCell>
                     <Badge variant="secondary" className={cn(segmentStyles[customer.segment])}>

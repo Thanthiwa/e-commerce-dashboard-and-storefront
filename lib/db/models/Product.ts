@@ -37,7 +37,7 @@ export interface IProduct extends Document {
   description: string;
   price: number;
   compareAtPrice?: number;
-  cost: number;
+  cost?: number;
   sku: string;
   barcode?: string;
   quantity: number;
@@ -122,7 +122,6 @@ const ProductSchema = new Schema<IProduct>(
     },
     cost: {
       type: Number,
-      required: [true, "Cost is required for profit calculations"],
       min: [0, "Cost cannot be negative"],
     },
     sku: {
@@ -206,20 +205,20 @@ ProductSchema.index({ "attributes.key": 1, "attributes.value": 1 }, { sparse: tr
 // Text index for search
 ProductSchema.index({ name: "text", description: "text", tags: "text" });
 
-// Pre-save hook to generate slug
-ProductSchema.pre("save", function (next) {
+// Pre-validate hook to generate slug before validation runs
+ProductSchema.pre("validate", function () {
   if (this.isModified("name") && !this.slug) {
     this.slug = this.name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)/g, "");
   }
-  next();
 });
 
 // Virtual for profit margin
 ProductSchema.virtual("profitMargin").get(function () {
   if (this.price === 0) return 0;
+  if (typeof this.cost !== "number") return 0;
   return ((this.price - this.cost) / this.price) * 100;
 });
 

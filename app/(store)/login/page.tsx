@@ -34,14 +34,14 @@ function LoginForm() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Login failed");
+        setError(data.error || "เข้าสู่ระบบไม่สำเร็จ");
         return;
       }
 
       router.push("/");
       router.refresh();
     } catch {
-      setError("An error occurred. Please try again.");
+      setError("เกิดข้อผิดพลาด กรุณาลองอีกครั้ง");
     } finally {
       setLoading(false);
     }
@@ -51,8 +51,8 @@ function LoginForm() {
     <div className="flex min-h-[60vh] items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Customer Login</CardTitle>
-          <CardDescription>Sign in to your account</CardDescription>
+          <CardTitle className="text-2xl">เข้าสู่ระบบลูกค้า</CardTitle>
+          <CardDescription>เข้าสู่ระบบบัญชีของคุณ</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -68,11 +68,11 @@ function LoginForm() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">อีเมล</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="customer@example.com"
+                placeholder="example@domain.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -80,11 +80,11 @@ function LoginForm() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">รหัสผ่าน</Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="Enter your password"
+                placeholder="กรอกรหัสผ่านของคุณ"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -95,15 +95,15 @@ function LoginForm() {
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in...
+                  กำลังเข้าสู่ระบบ...
                 </>
               ) : (
-                "Sign In"
+                "เข้าสู่ระบบ"
               )}
             </Button>
             
             <div className="text-center text-sm mt-4 text-muted-foreground">
-              Don't have an account? <a href="/register" className="underline hover:text-primary">Sign up</a>
+              ยังไม่มีบัญชีใช่ไหม? <a href="/register" className="underline hover:text-primary">สมัครสมาชิก</a>
             </div>
           </form>
         </CardContent>

@@ -210,12 +210,11 @@ OrderSchema.statics.generateOrderNumber = async function () {
 };
 
 // Pre-save hook to calculate profit
-OrderSchema.pre("save", function (next) {
+OrderSchema.pre("save", function () {
   if (this.isModified("items") || this.isNew) {
     const totalCost = this.items.reduce((sum, item) => sum + item.cost * item.quantity, 0);
     this.profit = this.subtotal - totalCost;
   }
-  next();
 });
 
 // Method to update status

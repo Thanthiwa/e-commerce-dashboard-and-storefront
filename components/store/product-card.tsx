@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart } from "lucide-react";
+import { formatCurrency } from "@/lib/utils/format";
 
 interface Product {
   id: string;
@@ -39,8 +40,8 @@ export function ProductCard({ product }: { product: Product }) {
         </Link>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="font-bold">${product.price.toFixed(2)}</span>
-            {product.compareAtPrice && <span className="text-sm text-muted-foreground line-through">${product.compareAtPrice.toFixed(2)}</span>}
+            <span className="font-bold">{formatCurrency(product.price)}</span>
+            {product.compareAtPrice && <span className="text-sm text-muted-foreground line-through">{formatCurrency(product.compareAtPrice)}</span>}
           </div>
           <Button size="icon" variant="outline" className="h-8 w-8">
             <ShoppingCart className="h-4 w-4" />

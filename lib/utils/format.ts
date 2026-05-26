@@ -1,7 +1,7 @@
 /**
  * Format a number as currency
  */
-export function formatCurrency(amount: number, currency = "USD", locale = "en-US"): string {
+export function formatCurrency(amount: number, currency = "THB", locale = "th-TH"): string {
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,

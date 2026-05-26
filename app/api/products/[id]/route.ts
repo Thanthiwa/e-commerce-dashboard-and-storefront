@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/connect";
 import Product from "@/lib/db/models/Product";
@@ -68,21 +69,19 @@ export async function PUT(
       }
     }
 
-    // Process attributes if provided
-    if (body.attributes && Array.isArray(body.attributes)) {
-      body.attributes = body.attributes.map((attr: Record<string, unknown>) => ({
-        key: String(attr.key || "").toLowerCase().replace(/\s+/g, "_"),
-        label: String(attr.label || attr.key || ""),
-        type: attr.type || "text",
-        value: attr.value,
-        options: attr.options || [],
-        unit: attr.unit || "",
-        required: Boolean(attr.required),
-      }));
-    }
+    // Remove legacy dynamic attribute/specifications fields from updates
+    delete body.attributes;
+    delete body.specifications;
 
-    // Handle category change
+    // Resolve category if provided as ID, slug, or name
     if (body.category && body.category.toString() !== existingProduct.category.toString()) {
+      const categoryDoc = mongoose.isValidObjectId(body.category)
+        ? await Category.findById(body.category)
+        : await Category.findOne({ $or: [{ slug: String(body.category) }, { name: String(body.category) }] });
+      if (!categoryDoc) {
+        return NextResponse.json({ error: "Invalid category" }, { status: 400 });
+      }
+      body.category = categoryDoc._id;
       // Decrement old category count
       await Category.findByIdAndUpdate(existingProduct.category, { $inc: { productCount: -1 } });
       // Increment new category count

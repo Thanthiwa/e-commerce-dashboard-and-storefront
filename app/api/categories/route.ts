@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/connect";
 import Category from "@/lib/db/models/Category";
+import { generateSlug } from "@/lib/utils/format";
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,22 +33,22 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    // Generate slug if not provided
-    if (!body.slug) {
-      body.slug = body.name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/(^-|-$)/g, "");
+    // Always generate slug from name on server to avoid validation errors
+    if (!body.name || !String(body.name).trim()) {
+      return NextResponse.json({ error: "Category name is required" }, { status: 400 });
     }
 
-    // Ensure unique slug
-    const existingSlug = await Category.findOne({ slug: body.slug });
-    if (existingSlug) {
-      return NextResponse.json(
-        { error: "A category with this slug already exists" },
-        { status: 400 }
-      );
+    body.slug = generateSlug(String(body.name));
+
+    // Ensure unique slug (append timestamp if needed)
+    let uniqueSlug = body.slug;
+    let counter = 0;
+    while (await Category.findOne({ slug: uniqueSlug })) {
+      counter += 1;
+      uniqueSlug = `${body.slug}-${Date.now()}`;
+      if (counter > 5) break;
     }
+    body.slug = uniqueSlug;
 
     const category = new Category(body);
     await category.save();

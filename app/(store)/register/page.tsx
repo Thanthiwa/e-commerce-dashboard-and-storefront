@@ -30,12 +30,12 @@ export default function StorefrontRegisterPage() {
     setError("");
 
     if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
+      setError("รหัสผ่านไม่ตรงกัน");
       return;
     }
 
     if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters long");
+      setError("รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร");
       return;
     }
 
@@ -56,14 +56,14 @@ export default function StorefrontRegisterPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Registration failed");
+        setError(data.error || "ลงทะเบียนไม่สำเร็จ");
         return;
       }
 
       // Auto-login or redirect to login after successful registration
       router.push("/login?registered=true");
     } catch {
-      setError("An error occurred. Please try again.");
+      setError("เกิดข้อผิดพลาด กรุณาลองอีกครั้ง");
     } finally {
       setLoading(false);
     }
@@ -73,8 +73,8 @@ export default function StorefrontRegisterPage() {
     <div className="flex min-h-[70vh] items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Create an Account</CardTitle>
-          <CardDescription>Join us to start shopping</CardDescription>
+          <CardTitle className="text-2xl">สร้างบัญชีใหม่</CardTitle>
+          <CardDescription>สมัครสมาชิกเพื่อเริ่มช็อป</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -86,20 +86,20 @@ export default function StorefrontRegisterPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="firstName">First Name</Label>
+                <Label htmlFor="firstName">ชื่อ</Label>
                 <Input
                   id="firstName"
-                  placeholder="John"
+                  placeholder="สมชาย"
                   value={formData.firstName}
                   onChange={handleChange}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="lastName">Last Name</Label>
+                <Label htmlFor="lastName">นามสกุล</Label>
                 <Input
                   id="lastName"
-                  placeholder="Doe"
+                  placeholder="สมปอง"
                   value={formData.lastName}
                   onChange={handleChange}
                   required
@@ -108,11 +108,11 @@ export default function StorefrontRegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">อีเมล</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="john.doe@example.com"
+                placeholder="example@domain.com"
                 value={formData.email}
                 onChange={handleChange}
                 required
@@ -120,11 +120,11 @@ export default function StorefrontRegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">รหัสผ่าน</Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="Create a password"
+                placeholder="สร้างรหัสผ่าน"
                 value={formData.password}
                 onChange={handleChange}
                 required
@@ -132,11 +132,11 @@ export default function StorefrontRegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Label htmlFor="confirmPassword">ยืนยันรหัสผ่าน</Label>
               <Input
                 id="confirmPassword"
                 type="password"
-                placeholder="Confirm your password"
+                placeholder="ยืนยันรหัสผ่านของคุณ"
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 required
@@ -147,15 +147,15 @@ export default function StorefrontRegisterPage() {
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating account...
+                  กำลังสร้างบัญชี...
                 </>
               ) : (
-                "Sign Up"
+                "สมัครสมาชิก"
               )}
             </Button>
             
             <div className="text-center text-sm mt-4 text-muted-foreground">
-              Already have an account? <a href="/login" className="underline hover:text-primary">Log in</a>
+              มีบัญชีแล้ว? <a href="/login" className="underline hover:text-primary">เข้าสู่ระบบ</a>
             </div>
           </form>
         </CardContent>

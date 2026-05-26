@@ -19,6 +19,9 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarUploadError, setAvatarUploadError] = useState("");
+  const [avatarUploadSuccess, setAvatarUploadSuccess] = useState("");
   
   // Dialog State
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
@@ -87,16 +90,55 @@ export default function ProfilePage() {
       const data = await res.json();
       
       if (!res.ok) {
-        setError(data.error || "Failed to update profile");
+        setError(data.error || "อัปเดตโปรไฟล์ไม่สำเร็จ");
         return;
       }
       
       setUser(data.user);
-      setSuccess("Profile updated successfully!");
+      setSuccess("อัปเดตโปรไฟล์เรียบร้อยแล้ว");
     } catch (err) {
-      setError("An error occurred while updating profile");
+      setError("เกิดข้อผิดพลาดระหว่างอัปเดตโปรไฟล์");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setAvatarUploadError("");
+    setAvatarUploadSuccess("");
+
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setAvatarUploadError("กรุณาอัปโหลดไฟล์ภาพที่ถูกต้อง");
+      return;
+    }
+
+    setAvatarUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setAvatarUploadError(data.error || "อัปโหลดรูปไม่สำเร็จ");
+        return;
+      }
+
+      setFormData((prev) => ({ ...prev, avatar: data.url }));
+      setAvatarUploadSuccess("อัปโหลดรูปโปรไฟล์เรียบร้อยแล้ว");
+    } catch (err) {
+      setAvatarUploadError("อัปโหลดรูปไม่สำเร็จ กรุณาลองอีกครั้ง");
+    } finally {
+      setAvatarUploading(false);
     }
   };
 
@@ -115,7 +157,7 @@ export default function ProfilePage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setAddressError(data.error || "Failed to add address");
+        setAddressError(data.error || "ไม่สามารถเพิ่มที่อยู่ได้");
         return;
       }
 
@@ -133,14 +175,14 @@ export default function ProfilePage() {
         phone: "",
       });
     } catch (err) {
-      setAddressError("An error occurred while saving address");
+      setAddressError("เกิดข้อผิดพลาดระหว่างบันทึกที่อยู่");
     } finally {
       setAddressSaving(false);
     }
   };
 
   const handleDeleteAddress = async (addressId: string) => {
-    if (!confirm("Are you sure you want to delete this address?")) return;
+    if (!confirm("คุณแน่ใจหรือไม่ว่าต้องการลบที่อยู่นี้?")) return;
     
     try {
       const res = await fetch(`/api/storefront/profile/addresses/${addressId}`, {
@@ -151,7 +193,7 @@ export default function ProfilePage() {
         setUser({ ...user, addresses: data.addresses });
       }
     } catch (error) {
-      console.error("Failed to delete address", error);
+      console.error("ไม่สามารถลบที่อยู่ได้", error);
     }
   };
 
@@ -182,15 +224,15 @@ export default function ProfilePage() {
 
       <Tabs defaultValue="general" className="w-full">
         <TabsList className="grid w-full grid-cols-2 max-w-[400px]">
-          <TabsTrigger value="general">General Info</TabsTrigger>
-          <TabsTrigger value="addresses">Addresses</TabsTrigger>
+          <TabsTrigger value="general">ข้อมูลทั่วไป</TabsTrigger>
+          <TabsTrigger value="addresses">ที่อยู่</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="general" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Personal Information</CardTitle>
-              <CardDescription>Update your personal details and profile picture.</CardDescription>
+              <CardTitle>ข้อมูลส่วนตัว</CardTitle>
+              <CardDescription>แก้ไขข้อมูลส่วนตัวและรูปโปรไฟล์ของคุณ</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleProfileUpdate} className="space-y-4">
@@ -199,35 +241,55 @@ export default function ProfilePage() {
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name</Label>
+                    <Label htmlFor="firstName">ชื่อ</Label>
                     <Input id="firstName" value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} required />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name</Label>
+                    <Label htmlFor="lastName">นามสกุล</Label>
                     <Input id="lastName" value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} required />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email (Cannot be changed)</Label>
+                  <Label htmlFor="email">อีเมล (ไม่สามารถแก้ไขได้)</Label>
                   <Input id="email" value={user.email} disabled />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input id="phone" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="+1 234 567 890" />
+                  <Label htmlFor="phone">เบอร์โทรศัพท์</Label>
+                  <Input id="phone" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="081-234-5678" />
                 </div>
 
+                
+
                 <div className="space-y-2">
-                  <Label htmlFor="avatar">Avatar Image URL</Label>
-                  <Input id="avatar" value={formData.avatar} onChange={(e) => setFormData({...formData, avatar: e.target.value})} placeholder="https://example.com/my-avatar.png" />
+                  <Label htmlFor="avatarFile">อัปโหลดรูปโปรไฟล์</Label>
+                  <Input
+                    id="avatarFile"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarFileChange}
+                  />
+                  {avatarUploadError && (
+                    <Alert variant="destructive">
+                      <AlertDescription>{avatarUploadError}</AlertDescription>
+                    </Alert>
+                  )}
+                  {avatarUploadSuccess && (
+                    <Alert className="bg-emerald-50 text-emerald-600 border-emerald-200">
+                      <AlertDescription>{avatarUploadSuccess}</AlertDescription>
+                    </Alert>
+                  )}
+                  {avatarUploading && (
+                    <p className="text-sm text-muted-foreground">กำลังอัปโหลดรูปโปรไฟล์...</p>
+                  )}
                 </div>
 
                 <Button type="submit" disabled={saving || user.id === "demo-customer-id"}>
-                  {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Save Changes"}
+                  {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "บันทึกการเปลี่ยนแปลง"}
                 </Button>
                 {user.id === "demo-customer-id" && (
-                  <p className="text-sm text-amber-600 mt-2">Demo users cannot update their profile.</p>
+                  <p className="text-sm text-amber-600 mt-2">ผู้ใช้ตัวอย่างไม่สามารถแก้ไขโปรไฟล์ได้</p>
                 )}
               </form>
             </CardContent>
@@ -238,63 +300,63 @@ export default function ProfilePage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle>My Addresses</CardTitle>
-                <CardDescription>Manage your shipping and billing addresses.</CardDescription>
+                <CardTitle>ที่อยู่ของฉัน</CardTitle>
+                <CardDescription>จัดการที่อยู่จัดส่งและใบกำกับสินค้า</CardDescription>
               </div>
               <Dialog open={isAddressModalOpen} onOpenChange={setIsAddressModalOpen}>
                 <DialogTrigger asChild>
                   <Button disabled={user.id === "demo-customer-id"}>
-                    <Plus className="h-4 w-4 mr-2" /> Add Address
+                    <Plus className="h-4 w-4 mr-2" /> เพิ่มที่อยู่
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[500px]">
                   <DialogHeader>
-                    <DialogTitle>Add New Address</DialogTitle>
+                    <DialogTitle>เพิ่มที่อยู่ใหม่</DialogTitle>
                   </DialogHeader>
                   <form onSubmit={handleAddressSubmit} className="space-y-4 py-4">
                     {addressError && <Alert variant="destructive"><AlertDescription>{addressError}</AlertDescription></Alert>}
                     
                     <div className="space-y-2">
-                      <Label htmlFor="fullName">Full Name</Label>
+                      <Label htmlFor="fullName">ชื่อ-นามสกุล</Label>
                       <Input id="fullName" required value={addressData.fullName} onChange={(e) => setAddressData({...addressData, fullName: e.target.value})} />
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="address">Address (Street, Appt, etc.)</Label>
+                      <Label htmlFor="address">ที่อยู่ (ถนน, ตึก, ห้อง)</Label>
                       <Input id="address" required value={addressData.address} onChange={(e) => setAddressData({...addressData, address: e.target.value})} />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="city">City</Label>
+                        <Label htmlFor="city">เมือง</Label>
                         <Input id="city" required value={addressData.city} onChange={(e) => setAddressData({...addressData, city: e.target.value})} />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="state">State / Province</Label>
+                        <Label htmlFor="state">จังหวัด</Label>
                         <Input id="state" required value={addressData.state} onChange={(e) => setAddressData({...addressData, state: e.target.value})} />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="postalCode">Postal Code</Label>
+                        <Label htmlFor="postalCode">รหัสไปรษณีย์</Label>
                         <Input id="postalCode" required value={addressData.postalCode} onChange={(e) => setAddressData({...addressData, postalCode: e.target.value})} />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="country">Country</Label>
+                        <Label htmlFor="country">ประเทศ</Label>
                         <Input id="country" required value={addressData.country} onChange={(e) => setAddressData({...addressData, country: e.target.value})} />
                       </div>
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="addressPhone">Phone (Optional)</Label>
+                      <Label htmlFor="addressPhone">โทรศัพท์ (ไม่บังคับ)</Label>
                       <Input id="addressPhone" value={addressData.phone} onChange={(e) => setAddressData({...addressData, phone: e.target.value})} />
                     </div>
 
                     <div className="pt-4 flex justify-end">
                       <Button type="submit" disabled={addressSaving}>
                         {addressSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Save Address
+                        บันทึกที่อยู่
                       </Button>
                     </div>
                   </form>
@@ -304,7 +366,7 @@ export default function ProfilePage() {
             <CardContent>
               {user.id === "demo-customer-id" && (
                 <Alert className="mb-4 bg-amber-50 text-amber-600 border-amber-200">
-                  <AlertDescription>Demo users cannot modify addresses.</AlertDescription>
+                  <AlertDescription>ผู้ใช้ตัวอย่างไม่สามารถแก้ไขที่อยู่ได้</AlertDescription>
                 </Alert>
               )}
               
@@ -313,7 +375,7 @@ export default function ProfilePage() {
                   <Card key={address._id || address.address} className="relative overflow-hidden">
                     {address.isDefault && (
                       <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-xs px-2 py-1 rounded-bl-lg font-medium">
-                        Default
+                        เริ่มต้น
                       </div>
                     )}
                     <CardContent className="p-4">
@@ -330,7 +392,7 @@ export default function ProfilePage() {
                       
                       <div className="flex gap-2 mt-4 pt-4 border-t">
                         <Button variant="outline" size="sm" className="flex-1 text-red-600 hover:text-red-600" disabled={user.id === "demo-customer-id"} onClick={() => handleDeleteAddress(address._id)}>
-                          <Trash2 className="h-4 w-4 mr-2" /> Delete
+                          <Trash2 className="h-4 w-4 mr-2" /> ลบ
                         </Button>
                       </div>
                     </CardContent>
@@ -339,7 +401,7 @@ export default function ProfilePage() {
                 
                 {(!user.addresses || user.addresses.length === 0) && (
                   <div className="col-span-2 text-center py-8 text-muted-foreground">
-                    You haven't saved any addresses yet.
+                    ยังไม่มีที่อยู่ที่บันทึกไว้
                   </div>
                 )}
               </div>

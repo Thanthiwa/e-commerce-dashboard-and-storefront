@@ -1,7 +1,9 @@
+import mongoose from "mongoose";
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/connect";
 import Product from "@/lib/db/models/Product";
 import Category from "@/lib/db/models/Category";
+import { generateSlug } from "@/lib/utils/format";
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,7 +30,9 @@ export async function GET(request: NextRequest) {
     const query: Record<string, unknown> = {};
 
     if (category) {
-      const categoryDoc = await Category.findOne({ slug: category });
+      const categoryDoc = mongoose.isValidObjectId(category)
+        ? await Category.findById(category)
+        : await Category.findOne({ $or: [{ slug: category }, { name: category }] });
       if (categoryDoc) {
         query.category = categoryDoc._id;
       }
@@ -89,12 +93,27 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    // Generate slug if not provided
-    if (!body.slug) {
-      body.slug = body.name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/(^-|-$)/g, "");
+    // Always generate slug from name on server if name present
+    if (!body.name || !String(body.name).trim()) {
+      return NextResponse.json({ error: "Product name is required" }, { status: 400 });
+    }
+    body.slug = generateSlug(String(body.name));
+
+    // Ensure unique slug (append timestamp if needed)
+    const existing = await Product.findOne({ slug: body.slug });
+    if (existing) {
+      body.slug = `${body.slug}-${Date.now()}`;
+    }
+
+    // Resolve category if provided as ID, slug, or name
+    if (body.category) {
+      const categoryDoc = mongoose.isValidObjectId(body.category)
+        ? await Category.findById(body.category)
+        : await Category.findOne({ $or: [{ slug: String(body.category) }, { name: String(body.category) }] });
+      if (!categoryDoc) {
+        return NextResponse.json({ error: "Invalid category" }, { status: 400 });
+      }
+      body.category = categoryDoc._id;
     }
 
     // Ensure unique slug
@@ -112,24 +131,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Process attributes - ensure proper structure
-    if (body.attributes && Array.isArray(body.attributes)) {
-      body.attributes = body.attributes.map((attr: Record<string, unknown>) => ({
-        key: String(attr.key || "").toLowerCase().replace(/\s+/g, "_"),
-        label: String(attr.label || attr.key || ""),
-        type: attr.type || "text",
-        value: attr.value,
-        options: attr.options || [],
-        unit: attr.unit || "",
-        required: Boolean(attr.required),
-      }));
-    }
-
-    // Process specifications - allow any key-value pairs
-    if (body.specifications && typeof body.specifications === "object") {
-      // Specifications are stored as-is (MongoDB Mixed type)
-      // This allows full NoSQL flexibility
-    }
+    // Remove legacy dynamic attribute/specifications fields
+    delete body.attributes;
+    delete body.specifications;
 
     const product = new Product(body);
     await product.save();

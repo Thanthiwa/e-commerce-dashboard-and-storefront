@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { 
@@ -17,7 +16,6 @@ import {
   Save, 
   ArrowLeft, 
   Loader2,
-  GripVertical,
   X,
   AlertCircle,
   Upload
@@ -31,16 +29,6 @@ interface Category {
   slug: string;
 }
 
-interface ProductAttribute {
-  key: string;
-  label: string;
-  type: "text" | "number" | "boolean" | "select" | "multiselect" | "color" | "date";
-  value: unknown;
-  options?: string[];
-  unit?: string;
-  required?: boolean;
-}
-
 interface ProductVariant {
   name: string;
   options: string[];
@@ -52,8 +40,6 @@ interface ProductFormData {
   name: string;
   description: string;
   price: number;
-  compareAtPrice?: number;
-  cost: number;
   sku: string;
   barcode?: string;
   quantity: number;
@@ -62,42 +48,9 @@ interface ProductFormData {
   images: string[];
   tags: string[];
   status: "draft" | "active" | "archived";
-  attributes: ProductAttribute[];
-  specifications: Record<string, unknown>;
   variants: ProductVariant[];
 }
 
-const ATTRIBUTE_TYPES = [
-  { value: "text", label: "Text" },
-  { value: "number", label: "Number" },
-  { value: "boolean", label: "Yes/No" },
-  { value: "select", label: "Single Select" },
-  { value: "multiselect", label: "Multi Select" },
-  { value: "color", label: "Color" },
-  { value: "date", label: "Date" },
-];
-
-// Common attribute presets for quick addition
-const ATTRIBUTE_PRESETS: Record<string, ProductAttribute[]> = {
-  clothing: [
-    { key: "size", label: "Size", type: "select", value: "", options: ["XS", "S", "M", "L", "XL", "XXL"] },
-    { key: "color", label: "Color", type: "color", value: "#000000" },
-    { key: "material", label: "Material", type: "text", value: "" },
-    { key: "fit", label: "Fit", type: "select", value: "", options: ["Slim", "Regular", "Relaxed", "Oversized"] },
-  ],
-  electronics: [
-    { key: "brand", label: "Brand", type: "text", value: "" },
-    { key: "model", label: "Model", type: "text", value: "" },
-    { key: "warranty", label: "Warranty (months)", type: "number", value: 12, unit: "months" },
-    { key: "power", label: "Power Consumption", type: "number", value: 0, unit: "W" },
-  ],
-  food: [
-    { key: "weight", label: "Weight", type: "number", value: 0, unit: "g" },
-    { key: "organic", label: "Organic", type: "boolean", value: false },
-    { key: "expiry", label: "Expiry Date", type: "date", value: "" },
-    { key: "allergens", label: "Allergens", type: "multiselect", value: [], options: ["Gluten", "Dairy", "Nuts", "Soy", "Eggs"] },
-  ],
-};
 
 interface ProductFormProps {
   initialData?: Partial<ProductFormData>;
@@ -111,16 +64,12 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
   const [error, setError] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [tagInput, setTagInput] = useState("");
-  const [specKey, setSpecKey] = useState("");
-  const [specValue, setSpecValue] = useState("");
   const [isUploading, setIsUploading] = useState(false);
 
   const [formData, setFormData] = useState<ProductFormData>({
     name: "",
     description: "",
     price: 0,
-    compareAtPrice: undefined,
-    cost: 0,
     sku: "",
     barcode: "",
     quantity: 0,
@@ -129,8 +78,6 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
     images: [],
     tags: [],
     status: "draft",
-    attributes: [],
-    specifications: {},
     variants: [],
     ...initialData,
   });
@@ -227,71 +174,6 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
     }));
   };
 
-  // Attribute management
-  const addAttribute = () => {
-    setFormData((prev) => ({
-      ...prev,
-      attributes: [
-        ...prev.attributes,
-        {
-          key: "",
-          label: "",
-          type: "text",
-          value: "",
-          options: [],
-          unit: "",
-          required: false,
-        },
-      ],
-    }));
-  };
-
-  const addAttributePreset = (preset: keyof typeof ATTRIBUTE_PRESETS) => {
-    setFormData((prev) => ({
-      ...prev,
-      attributes: [...prev.attributes, ...ATTRIBUTE_PRESETS[preset]],
-    }));
-  };
-
-  const updateAttribute = (index: number, updates: Partial<ProductAttribute>) => {
-    setFormData((prev) => ({
-      ...prev,
-      attributes: prev.attributes.map((attr, i) =>
-        i === index ? { ...attr, ...updates } : attr
-      ),
-    }));
-  };
-
-  const removeAttribute = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      attributes: prev.attributes.filter((_, i) => i !== index),
-    }));
-  };
-
-  // Specification management (free-form key-value)
-  const addSpecification = () => {
-    if (specKey.trim() && specValue.trim()) {
-      setFormData((prev) => ({
-        ...prev,
-        specifications: {
-          ...prev.specifications,
-          [specKey.trim()]: specValue.trim(),
-        },
-      }));
-      setSpecKey("");
-      setSpecValue("");
-    }
-  };
-
-  const removeSpecification = (key: string) => {
-    setFormData((prev) => {
-      const newSpecs = { ...prev.specifications };
-      delete newSpecs[key];
-      return { ...prev, specifications: newSpecs };
-    });
-  };
-
   // Form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -304,15 +186,17 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
       if (!formData.sku.trim()) throw new Error("SKU is required");
       if (!formData.category) throw new Error("Category is required");
       if (formData.price < 0) throw new Error("Price cannot be negative");
-      if (formData.cost < 0) throw new Error("Cost cannot be negative");
 
       const url = productId ? `/api/products/${productId}` : "/api/products";
       const method = productId ? "PUT" : "POST";
+      const payload = { ...formData } as Record<string, unknown>;
+      delete payload.attributes;
+      delete payload.specifications;
 
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -327,155 +211,6 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  // Render attribute value input based on type
-  const renderAttributeValueInput = (attr: ProductAttribute, index: number) => {
-    switch (attr.type) {
-      case "boolean":
-        return (
-          <div className="flex items-center gap-2">
-            <Switch
-              checked={attr.value as boolean}
-              onCheckedChange={(checked) => updateAttribute(index, { value: checked })}
-            />
-            <span className="text-sm text-muted-foreground">
-              {attr.value ? "Yes" : "No"}
-            </span>
-          </div>
-        );
-      case "number":
-        return (
-          <div className="flex items-center gap-2">
-            <Input
-              type="number"
-              value={attr.value as number}
-              onChange={(e) => updateAttribute(index, { value: parseFloat(e.target.value) || 0 })}
-              className="w-32"
-            />
-            {attr.unit && (
-              <Input
-                placeholder="Unit"
-                value={attr.unit}
-                onChange={(e) => updateAttribute(index, { unit: e.target.value })}
-                className="w-20"
-              />
-            )}
-          </div>
-        );
-      case "color":
-        return (
-          <div className="flex items-center gap-2">
-            <input
-              type="color"
-              value={attr.value as string}
-              onChange={(e) => updateAttribute(index, { value: e.target.value })}
-              className="h-9 w-16 cursor-pointer rounded border"
-            />
-            <Input
-              value={attr.value as string}
-              onChange={(e) => updateAttribute(index, { value: e.target.value })}
-              className="w-28 font-mono text-sm"
-            />
-          </div>
-        );
-      case "date":
-        return (
-          <Input
-            type="date"
-            value={attr.value as string}
-            onChange={(e) => updateAttribute(index, { value: e.target.value })}
-            className="w-40"
-          />
-        );
-      case "select":
-        return (
-          <div className="space-y-2">
-            <Select
-              value={attr.value as string}
-              onValueChange={(value) => updateAttribute(index, { value })}
-            >
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Select..." />
-              </SelectTrigger>
-              <SelectContent>
-                {attr.options?.map((opt) => (
-                  <SelectItem key={opt} value={opt}>
-                    {opt}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Input
-              placeholder="Add option (comma separated)"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  const input = e.currentTarget;
-                  const newOptions = input.value
-                    .split(",")
-                    .map((o) => o.trim())
-                    .filter(Boolean);
-                  updateAttribute(index, {
-                    options: [...(attr.options || []), ...newOptions],
-                  });
-                  input.value = "";
-                }
-              }}
-              className="text-xs"
-            />
-          </div>
-        );
-      case "multiselect":
-        return (
-          <div className="space-y-2">
-            <div className="flex flex-wrap gap-1">
-              {(attr.value as string[] || []).map((v) => (
-                <Badge key={v} variant="secondary" className="gap-1">
-                  {v}
-                  <X
-                    className="h-3 w-3 cursor-pointer"
-                    onClick={() =>
-                      updateAttribute(index, {
-                        value: (attr.value as string[]).filter((x) => x !== v),
-                      })
-                    }
-                  />
-                </Badge>
-              ))}
-            </div>
-            <Select
-              value=""
-              onValueChange={(value) =>
-                updateAttribute(index, {
-                  value: [...(attr.value as string[] || []), value],
-                })
-              }
-            >
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Add..." />
-              </SelectTrigger>
-              <SelectContent>
-                {attr.options
-                  ?.filter((opt) => !(attr.value as string[] || []).includes(opt))
-                  .map((opt) => (
-                    <SelectItem key={opt} value={opt}>
-                      {opt}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </div>
-        );
-      default:
-        return (
-          <Input
-            value={attr.value as string}
-            onChange={(e) => updateAttribute(index, { value: e.target.value })}
-            placeholder="Value"
-          />
-        );
     }
   };
 
@@ -505,7 +240,7 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
               {productId ? "Edit Product" : "Add Product"}
             </h1>
             <p className="text-muted-foreground">
-              {productId ? "Update product details" : "Create a new product with dynamic attributes"}
+              {productId ? "Update product details" : "Create a new product"}
             </p>
           </div>
         </div>
@@ -580,7 +315,7 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
                   <Label htmlFor="price">Price *</Label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      $
+                      ฿
                     </span>
                     <Input
                       id="price"
@@ -593,42 +328,6 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="compareAtPrice">Compare at Price</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      $
-                    </span>
-                    <Input
-                      id="compareAtPrice"
-                      type="number"
-                      step="0.01"
-                      value={formData.compareAtPrice || ""}
-                      onChange={(e) =>
-                        handleChange("compareAtPrice", e.target.value ? parseFloat(e.target.value) : undefined)
-                      }
-                      className="pl-7"
-                      placeholder="Original price"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="cost">Cost *</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      $
-                    </span>
-                    <Input
-                      id="cost"
-                      type="number"
-                      step="0.01"
-                      value={formData.cost}
-                      onChange={(e) => handleChange("cost", parseFloat(e.target.value) || 0)}
-                      className="pl-7"
-                    />
-                  </div>
-                </div>
               </div>
             </CardContent>
           </Card>
@@ -680,6 +379,7 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
                     type="file"
                     accept="image/*"
                     className="sr-only"
+                    aria-label="Upload product image"
                     onChange={handleImageUpload}
                     disabled={isUploading}
                   />
@@ -688,187 +388,6 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
             </CardContent>
           </Card>
 
-          {/* Dynamic Attributes */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Dynamic Attributes</CardTitle>
-                  <CardDescription>
-                    Add custom attributes like size, color, material, etc. These are typed and validated.
-                  </CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Select onValueChange={(value) => addAttributePreset(value as keyof typeof ATTRIBUTE_PRESETS)}>
-                    <SelectTrigger className="w-36">
-                      <SelectValue placeholder="Add preset..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="clothing">Clothing</SelectItem>
-                      <SelectItem value="electronics">Electronics</SelectItem>
-                      <SelectItem value="food">Food</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button type="button" variant="outline" size="sm" onClick={addAttribute}>
-                    <Plus className="mr-1 h-4 w-4" />
-                    Custom
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {formData.attributes.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    No attributes added yet. Use presets or add custom attributes.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {formData.attributes.map((attr, index) => (
-                    <div
-                      key={index}
-                      className="flex items-start gap-4 rounded-lg border bg-muted/30 p-4"
-                    >
-                      <GripVertical className="mt-2 h-5 w-5 cursor-grab text-muted-foreground" />
-                      
-                      <div className="grid flex-1 gap-4 sm:grid-cols-4">
-                        <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">Key</Label>
-                          <Input
-                            value={attr.key}
-                            onChange={(e) =>
-                              updateAttribute(index, {
-                                key: e.target.value.toLowerCase().replace(/\s+/g, "_"),
-                              })
-                            }
-                            placeholder="attribute_key"
-                            className="font-mono text-sm"
-                          />
-                        </div>
-
-                        <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">Label</Label>
-                          <Input
-                            value={attr.label}
-                            onChange={(e) => updateAttribute(index, { label: e.target.value })}
-                            placeholder="Display Name"
-                          />
-                        </div>
-
-                        <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">Type</Label>
-                          <Select
-                            value={attr.type}
-                            onValueChange={(value) =>
-                              updateAttribute(index, {
-                                type: value as ProductAttribute["type"],
-                                value: value === "boolean" ? false : value === "number" ? 0 : "",
-                              })
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {ATTRIBUTE_TYPES.map((t) => (
-                                <SelectItem key={t.value} value={t.value}>
-                                  {t.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">Value</Label>
-                          {renderAttributeValueInput(attr, index)}
-                        </div>
-                      </div>
-
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => removeAttribute(index)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Free-form Specifications (NoSQL Flexibility) */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Specifications</CardTitle>
-              <CardDescription>
-                Add any key-value specifications. Perfect for technical specs, dimensions, etc.
-                This uses MongoDB&apos;s flexible schema (Mixed type).
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-end gap-2">
-                <div className="flex-1 space-y-1">
-                  <Label className="text-xs">Key</Label>
-                  <Input
-                    value={specKey}
-                    onChange={(e) => setSpecKey(e.target.value)}
-                    placeholder="e.g., Screen Size"
-                  />
-                </div>
-                <div className="flex-1 space-y-1">
-                  <Label className="text-xs">Value</Label>
-                  <Input
-                    value={specValue}
-                    onChange={(e) => setSpecValue(e.target.value)}
-                    placeholder="e.g., 15.6 inches"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addSpecification();
-                      }
-                    }}
-                  />
-                </div>
-                <Button type="button" variant="outline" onClick={addSpecification}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-
-              {Object.keys(formData.specifications).length > 0 && (
-                <div className="rounded-lg border">
-                  <table className="w-full text-sm">
-                    <tbody>
-                      {Object.entries(formData.specifications).map(([key, value]) => (
-                        <tr key={key} className="border-b last:border-0">
-                          <td className="px-4 py-2 font-medium">{key}</td>
-                          <td className="px-4 py-2 text-muted-foreground">
-                            {String(value)}
-                          </td>
-                          <td className="px-2 py-2">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-destructive"
-                              onClick={() => removeSpecification(key)}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
         </div>
 
         {/* Sidebar - 1 column */}

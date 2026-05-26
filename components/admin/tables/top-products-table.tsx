@@ -1,3 +1,5 @@
+import { formatCurrency } from "@/lib/utils/format";
+
 const topProducts = [
   {
     name: "Wireless Bluetooth Headphones",
@@ -47,7 +49,7 @@ export function TopProductsTable() {
             <div className="text-xs text-muted-foreground">{product.sku}</div>
           </div>
           <div className="text-right">
-            <div className="text-sm font-medium">${product.revenue.toLocaleString()}</div>
+            <div className="text-sm font-medium">{formatCurrency(product.revenue)}</div>
             <div className="text-xs text-muted-foreground">{product.sales} sales</div>
           </div>
         </div>

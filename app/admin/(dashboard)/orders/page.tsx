@@ -10,6 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, MoreHorizontal, Eye, Truck, XCircle, CheckCircle, RefreshCcw, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils/format";
 
 // Demo data
 const orders = [
@@ -142,7 +143,7 @@ export default function OrdersPage() {
                     <div className="text-xs text-muted-foreground">{order.email}</div>
                   </TableCell>
                   <TableCell className="text-center">{order.items}</TableCell>
-                  <TableCell className="text-right font-medium">${order.total.toFixed(2)}</TableCell>
+                  <TableCell className="text-right font-medium">{formatCurrency(order.total)}</TableCell>
                   <TableCell>
                     <Badge variant="secondary" className={cn("capitalize", statusStyles[order.status])}>
                       {order.status}

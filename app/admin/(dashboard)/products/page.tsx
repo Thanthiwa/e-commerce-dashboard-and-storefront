@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,20 +10,18 @@ import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Plus, Search, MoreHorizontal, Pencil, Trash2, Eye, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils/format";
 
-// Demo data
-const products = [
-  { id: "1", name: "Wireless Bluetooth Headphones", sku: "WBH-001", price: 99.99, stock: 42, category: "Electronics", status: "active" },
-  { id: "2", name: "Smart Fitness Watch", sku: "SFW-002", price: 199.99, stock: 28, category: "Electronics", status: "active" },
-  { id: "3", name: "Portable Power Bank 20000mAh", sku: "PPB-003", price: 49.99, stock: 65, category: "Electronics", status: "active" },
-  { id: "4", name: "USB-C Hub Multiport Adapter", sku: "UCH-004", price: 59.99, stock: 120, category: "Electronics", status: "active" },
-  { id: "5", name: "Mechanical Gaming Keyboard", sku: "MGK-005", price: 109.99, stock: 15, category: "Electronics", status: "active" },
-  { id: "6", name: "Premium Cotton T-Shirt", sku: "PCT-006", price: 29.99, stock: 200, category: "Clothing", status: "active" },
-  { id: "7", name: "Running Sneakers Pro", sku: "RSP-007", price: 129.99, stock: 45, category: "Sports", status: "active" },
-  { id: "8", name: "Organic Coffee Beans 1kg", sku: "OCB-008", price: 24.99, stock: 0, category: "Food", status: "draft" },
-  { id: "9", name: "Yoga Mat Premium", sku: "YMP-009", price: 39.99, stock: 80, category: "Sports", status: "active" },
-  { id: "10", name: "LED Desk Lamp", sku: "LDL-010", price: 44.99, stock: 5, category: "Home & Garden", status: "archived" },
-];
+interface AdminProduct {
+  _id: string;
+  name: string;
+  sku: string;
+  price: number;
+  quantity: number;
+  category: string;
+  status: string;
+  slug: string;
+}
 
 const statusStyles: Record<string, string> = {
   active: "bg-emerald-500/10 text-emerald-500",
@@ -33,18 +31,77 @@ const statusStyles: Record<string, string> = {
 
 export default function ProductsPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [products, setProducts] = useState<AdminProduct[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredProducts = products.filter(
-    (product) => product.name.toLowerCase().includes(searchQuery.toLowerCase()) || product.sku.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const res = await fetch("/api/products?limit=100");
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || "ไม่สามารถโหลดสินค้าได้");
+        }
+
+        setProducts(
+          (data.products || []).map((product: any) => ({
+            _id: product._id,
+            name: product.name,
+            slug: product.slug,
+            sku: product.sku,
+            price: product.price,
+            quantity: product.quantity ?? 0,
+            category: typeof product.category === "object" ? product.category.name : product.category || "Uncategorized",
+            status: product.status || "draft",
+          }))
+        );
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "ไม่สามารถโหลดสินค้าได้");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
+  const filteredProducts = useMemo(() => {
+    return products.filter(
+      (product) =>
+        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.sku.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [products, searchQuery]);
+
+  const deleteProduct = async (productId: string) => {
+    if (!confirm("คุณแน่ใจหรือไม่ว่าต้องการลบสินค้านี้?")) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/products/${productId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "ไม่สามารถลบสินค้าได้");
+      }
+      setProducts((prev) => prev.filter((product) => product._id !== productId));
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : "ลบไม่สำเร็จ");
+    }
+  };
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Products</h1>
-          <p className="text-muted-foreground">Manage your product inventory</p>
+          <h1 className="text-2xl font-semibold tracking-tight">สินค้า</h1>
+          <p className="text-muted-foreground">จัดการสินค้าคงคลังของคุณ</p>
         </div>
         <Button asChild>
           <Link href="/admin/products/new">
@@ -54,13 +111,12 @@ export default function ProductsPage() {
         </Button>
       </div>
 
-      {/* Filters */}
       <Card>
         <CardContent className="pt-6">
           <div className="flex items-center gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Search products..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
+              <Input placeholder="ค้นหาสินค้า..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
             </div>
             <Button variant="outline" size="icon">
               <Filter className="h-4 w-4" />
@@ -69,73 +125,78 @@ export default function ProductsPage() {
         </CardContent>
       </Card>
 
-      {/* Products Table */}
       <Card>
         <CardHeader>
-          <CardTitle>All Products</CardTitle>
+          <CardTitle>สินค้าทั้งหมด</CardTitle>
           <CardDescription>
-            {filteredProducts.length} product{filteredProducts.length !== 1 ? "s" : ""} found
+            พบ {filteredProducts.length} รายการ
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Product</TableHead>
-                <TableHead>SKU</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead className="text-right">Price</TableHead>
-                <TableHead className="text-right">Stock</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredProducts.map((product) => (
-                <TableRow key={product.id}>
-                  <TableCell className="font-medium">{product.name}</TableCell>
-                  <TableCell className="font-mono text-sm text-muted-foreground">{product.sku}</TableCell>
-                  <TableCell>{product.category}</TableCell>
-                  <TableCell className="text-right">${product.price.toFixed(2)}</TableCell>
-                  <TableCell className="text-right">
-                    <span className={cn(product.stock === 0 ? "text-red-500" : product.stock <= 10 ? "text-yellow-500" : "")}>{product.stock}</span>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className={cn("capitalize", statusStyles[product.status])}>
-                      {product.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild>
-                          <Link href={`/admin/products/${product.id}`}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            View
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link href={`/admin/products/${product.id}/edit`}>
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Edit
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+          {isLoading ? (
+            <div className="py-20 text-center text-muted-foreground">กำลังโหลดสินค้า...</div>
+          ) : error ? (
+            <div className="py-20 text-center text-destructive">{error}</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Product</TableHead>
+                  <TableHead>SKU</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead className="text-right">Price</TableHead>
+                  <TableHead className="text-right">Stock</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredProducts.map((product) => (
+                  <TableRow key={product._id}>
+                    <TableCell className="font-medium">{product.name}</TableCell>
+                    <TableCell className="font-mono text-sm text-muted-foreground">{product.sku}</TableCell>
+                    <TableCell>{product.category}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(product.price)}</TableCell>
+                    <TableCell className="text-right">
+                      <span className={cn(product.quantity === 0 ? "text-red-500" : product.quantity <= 10 ? "text-yellow-500" : "")}>{product.quantity}</span>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className={cn("capitalize", statusStyles[product.status])}>
+                        {product.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem asChild>
+                            <Link href={`/products/${product.slug}`} target="_blank">
+                              <Eye className="mr-2 h-4 w-4" />
+                              ดู
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link href={`/admin/products/${product._id}/edit`}>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              แก้ไข
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive" onSelect={() => deleteProduct(product._id)}>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            ลบ
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>
