@@ -29,6 +29,12 @@ const statusStyles: Record<string, string> = {
   archived: "bg-gray-500/10 text-gray-500",
 };
 
+const statusLabels: Record<string, string> = {
+  active: "เปิดขาย",
+  draft: "ฉบับร่าง",
+  archived: "เก็บถาวร",
+};
+
 export default function ProductsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [products, setProducts] = useState<AdminProduct[]>([]);
@@ -56,7 +62,7 @@ export default function ProductsPage() {
             sku: product.sku,
             price: product.price,
             quantity: product.quantity ?? 0,
-            category: typeof product.category === "object" ? product.category.name : product.category || "Uncategorized",
+            category: typeof product.category === "object" ? product.category.name : product.category || "ไม่ระบุหมวดหมู่",
             status: product.status || "draft",
           }))
         );
@@ -106,7 +112,7 @@ export default function ProductsPage() {
         <Button asChild>
           <Link href="/admin/products/new">
             <Plus className="mr-2 h-4 w-4" />
-            Add Product
+            เพิ่มสินค้า
           </Link>
         </Button>
       </div>
@@ -141,12 +147,12 @@ export default function ProductsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Product</TableHead>
+                  <TableHead>สินค้า</TableHead>
                   <TableHead>SKU</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead className="text-right">Price</TableHead>
-                  <TableHead className="text-right">Stock</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>หมวดหมู่</TableHead>
+                  <TableHead className="text-right">ราคา</TableHead>
+                  <TableHead className="text-right">สต็อก</TableHead>
+                  <TableHead>สถานะ</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -161,8 +167,8 @@ export default function ProductsPage() {
                       <span className={cn(product.quantity === 0 ? "text-red-500" : product.quantity <= 10 ? "text-yellow-500" : "")}>{product.quantity}</span>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="secondary" className={cn("capitalize", statusStyles[product.status])}>
-                        {product.status}
+                      <Badge variant="secondary" className={cn(statusStyles[product.status])}>
+                        {statusLabels[product.status] || product.status}
                       </Badge>
                     </TableCell>
                     <TableCell>

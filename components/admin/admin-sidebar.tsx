@@ -7,27 +7,27 @@ import { LayoutDashboard, Package, FolderTree, ShoppingCart, Users, LogOut, Sett
 
 const mainNavItems = [
   {
-    title: "Dashboard",
+    title: "แดชบอร์ด",
     href: "/admin/dashboard",
     icon: LayoutDashboard,
   },
   {
-    title: "Products",
+    title: "สินค้า",
     href: "/admin/products",
     icon: Package,
   },
   {
-    title: "Categories",
+    title: "หมวดหมู่",
     href: "/admin/categories",
     icon: FolderTree,
   },
   {
-    title: "Orders",
+    title: "คำสั่งซื้อ",
     href: "/admin/orders",
     icon: ShoppingCart,
   },
   {
-    title: "Customers",
+    title: "ลูกค้า",
     href: "/admin/customers",
     icon: Users,
   },
@@ -43,7 +43,7 @@ export function AdminSidebar() {
       router.push("/admin/login");
       router.refresh();
     } catch (error) {
-      console.error("Logout failed", error);
+      console.error("ออกจากระบบไม่สำเร็จ", error);
     }
   };
 
@@ -55,7 +55,7 @@ export function AdminSidebar() {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <Store className="h-4 w-4" />
           </div>
-          <span className="text-lg font-semibold text-sidebar-foreground">Commerce</span>
+          <span className="text-lg font-semibold text-sidebar-foreground">ร้านคอมเมิร์ซ</span>
         </div>
 
         {/* Navigation */}
@@ -85,11 +85,11 @@ export function AdminSidebar() {
         <div className="border-t border-border p-3">
           <Link href="/" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground">
             <Store className="h-4 w-4" />
-            View Store
+            ดูหน้าร้าน
           </Link>
           <Link href="/admin/settings" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground">
             <Settings className="h-4 w-4" />
-            Settings
+            ตั้งค่า
           </Link>
           <button
             type="button"
@@ -97,7 +97,7 @@ export function AdminSidebar() {
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-destructive"
           >
             <LogOut className="h-4 w-4" />
-            Logout
+            ออกจากระบบ
           </button>
         </div>
       </div>

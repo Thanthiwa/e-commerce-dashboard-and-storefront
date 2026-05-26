@@ -12,7 +12,6 @@ import { Search, MoreHorizontal, Eye, Truck, XCircle, CheckCircle, RefreshCcw, F
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/format";
 
-// Demo data
 const orders = [
   { id: "ORD-240521-0001", customer: "John Smith", email: "john@example.com", items: 3, total: 299.99, status: "delivered", payment: "paid", date: "2024-05-21" },
   { id: "ORD-240521-0002", customer: "Sarah Johnson", email: "sarah@example.com", items: 1, total: 149.5, status: "shipped", payment: "paid", date: "2024-05-21" },
@@ -40,6 +39,22 @@ const paymentStyles: Record<string, string> = {
   refunded: "bg-gray-500/10 text-gray-500",
 };
 
+const statusLabels: Record<string, string> = {
+  pending: "รอดำเนินการ",
+  processing: "กำลังเตรียม",
+  shipped: "จัดส่งแล้ว",
+  delivered: "ส่งถึงแล้ว",
+  cancelled: "ยกเลิกแล้ว",
+  refunded: "คืนเงินแล้ว",
+};
+
+const paymentLabels: Record<string, string> = {
+  pending: "รอชำระเงิน",
+  paid: "ชำระแล้ว",
+  failed: "ชำระไม่สำเร็จ",
+  refunded: "คืนเงินแล้ว",
+};
+
 export default function OrdersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -54,8 +69,8 @@ export default function OrdersPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Orders</h1>
-        <p className="text-muted-foreground">Manage and track customer orders</p>
+        <h1 className="text-2xl font-semibold tracking-tight">คำสั่งซื้อ</h1>
+        <p className="text-muted-foreground">จัดการและติดตามคำสั่งซื้อของลูกค้า</p>
       </div>
 
       {/* Stats Cards */}
@@ -63,25 +78,25 @@ export default function OrdersPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">{orders.filter((o) => o.status === "pending").length}</div>
-            <p className="text-xs text-muted-foreground">Pending Orders</p>
+            <p className="text-xs text-muted-foreground">คำสั่งซื้อรอดำเนินการ</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">{orders.filter((o) => o.status === "processing").length}</div>
-            <p className="text-xs text-muted-foreground">Processing</p>
+            <p className="text-xs text-muted-foreground">กำลังเตรียม</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">{orders.filter((o) => o.status === "shipped").length}</div>
-            <p className="text-xs text-muted-foreground">Shipped</p>
+            <p className="text-xs text-muted-foreground">จัดส่งแล้ว</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">{orders.filter((o) => o.status === "delivered").length}</div>
-            <p className="text-xs text-muted-foreground">Delivered</p>
+            <p className="text-xs text-muted-foreground">ส่งถึงแล้ว</p>
           </CardContent>
         </Card>
       </div>
@@ -92,20 +107,20 @@ export default function OrdersPage() {
           <div className="flex items-center gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Search orders..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
+              <Input placeholder="ค้นหาคำสั่งซื้อ..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by status" />
+                <SelectValue placeholder="กรองตามสถานะ" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="processing">Processing</SelectItem>
-                <SelectItem value="shipped">Shipped</SelectItem>
-                <SelectItem value="delivered">Delivered</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-                <SelectItem value="refunded">Refunded</SelectItem>
+                <SelectItem value="all">ทุกสถานะ</SelectItem>
+                <SelectItem value="pending">รอดำเนินการ</SelectItem>
+                <SelectItem value="processing">กำลังเตรียม</SelectItem>
+                <SelectItem value="shipped">จัดส่งแล้ว</SelectItem>
+                <SelectItem value="delivered">ส่งถึงแล้ว</SelectItem>
+                <SelectItem value="cancelled">ยกเลิกแล้ว</SelectItem>
+                <SelectItem value="refunded">คืนเงินแล้ว</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -115,22 +130,22 @@ export default function OrdersPage() {
       {/* Orders Table */}
       <Card>
         <CardHeader>
-          <CardTitle>All Orders</CardTitle>
+          <CardTitle>คำสั่งซื้อทั้งหมด</CardTitle>
           <CardDescription>
-            {filteredOrders.length} order{filteredOrders.length !== 1 ? "s" : ""} found
+            พบ {filteredOrders.length} คำสั่งซื้อ
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Order</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead className="text-center">Items</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Payment</TableHead>
-                <TableHead>Date</TableHead>
+                <TableHead>คำสั่งซื้อ</TableHead>
+                <TableHead>ลูกค้า</TableHead>
+                <TableHead className="text-center">รายการ</TableHead>
+                <TableHead className="text-right">ยอดรวม</TableHead>
+                <TableHead>สถานะ</TableHead>
+                <TableHead>การชำระเงิน</TableHead>
+                <TableHead>วันที่</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -145,13 +160,13 @@ export default function OrdersPage() {
                   <TableCell className="text-center">{order.items}</TableCell>
                   <TableCell className="text-right font-medium">{formatCurrency(order.total)}</TableCell>
                   <TableCell>
-                    <Badge variant="secondary" className={cn("capitalize", statusStyles[order.status])}>
-                      {order.status}
+                    <Badge variant="secondary" className={cn(statusStyles[order.status])}>
+                      {statusLabels[order.status] || order.status}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary" className={cn("capitalize", paymentStyles[order.payment])}>
-                      {order.payment}
+                    <Badge variant="secondary" className={cn(paymentStyles[order.payment])}>
+                      {paymentLabels[order.payment] || order.payment}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{order.date}</TableCell>
@@ -165,25 +180,25 @@ export default function OrdersPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem>
                           <Eye className="mr-2 h-4 w-4" />
-                          View Details
+                          ดูรายละเอียด
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem>
                           <Truck className="mr-2 h-4 w-4" />
-                          Mark as Shipped
+                          ทำเครื่องหมายว่าจัดส่งแล้ว
                         </DropdownMenuItem>
                         <DropdownMenuItem>
                           <CheckCircle className="mr-2 h-4 w-4" />
-                          Mark as Delivered
+                          ทำเครื่องหมายว่าส่งถึงแล้ว
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem className="text-destructive">
                           <XCircle className="mr-2 h-4 w-4" />
-                          Cancel Order
+                          ยกเลิกคำสั่งซื้อ
                         </DropdownMenuItem>
                         <DropdownMenuItem>
                           <RefreshCcw className="mr-2 h-4 w-4" />
-                          Process Refund
+                          ดำเนินการคืนเงิน
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

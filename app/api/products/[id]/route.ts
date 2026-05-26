@@ -12,8 +12,11 @@ export async function GET(
     await connectDB();
     const { id } = await params;
 
-    // Try to find by ID first, then by slug
-    let product = await Product.findById(id).populate("category", "name slug").lean();
+    // Try to find by ID first when the URL param is a valid ObjectId, then by slug.
+    // Product detail pages pass the product slug here, and findById throws on non-ObjectId strings.
+    let product = mongoose.isValidObjectId(id)
+      ? await Product.findById(id).populate("category", "name slug").lean()
+      : null;
     
     if (!product) {
       product = await Product.findOne({ slug: id }).populate("category", "name slug").lean();

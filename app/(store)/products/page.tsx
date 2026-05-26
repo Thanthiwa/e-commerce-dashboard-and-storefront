@@ -116,7 +116,7 @@ export default function ProductsPage() {
         const data = await res.json();
 
         if (!res.ok) {
-          throw new Error(data.error || "Failed to load products");
+          throw new Error(data.error || "โหลดสินค้าไม่สำเร็จ");
         }
 
         const mappedProducts: StoreProduct[] = (data.products || []).map((product: any) => ({
@@ -126,7 +126,7 @@ export default function ProductsPage() {
           price: product.price,
           compareAtPrice: product.compareAtPrice,
           images: Array.isArray(product.images) && product.images.length ? product.images : ["/placeholder.svg?height=300&width=300"],
-          category: typeof product.category === "object" ? product.category.name : product.category || "Uncategorized",
+          category: typeof product.category === "object" ? product.category.name : product.category || "ไม่ระบุหมวดหมู่",
           categoryId: typeof product.category === "object" ? product.category._id : product.category || "",
           status: product.status,
           quantity: product.quantity ?? 0,
@@ -135,7 +135,7 @@ export default function ProductsPage() {
 
         setProducts(mappedProducts);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load products");
+        setError(err instanceof Error ? err.message : "โหลดสินค้าไม่สำเร็จ");
       } finally {
         setIsLoading(false);
       }
@@ -149,7 +149,7 @@ export default function ProductsPage() {
           setCategories(data.categories || []);
         }
       } catch (err) {
-        console.error("Failed to load categories", err);
+        console.error("โหลดหมวดหมู่ไม่สำเร็จ", err);
       }
     };
 
@@ -215,7 +215,7 @@ export default function ProductsPage() {
                 </SheetTrigger>
                 <SheetContent side="left">
                   <SheetHeader>
-                    <SheetTitle>Filters</SheetTitle>
+                    <SheetTitle>ตัวกรอง</SheetTitle>
                   </SheetHeader>
                   <div className="mt-6">
                     <FilterSidebar
@@ -240,7 +240,7 @@ export default function ProductsPage() {
                 <SelectItem value="featured">สินค้าแนะนำ</SelectItem>
                 <SelectItem value="price-asc">ราคาต่ำไปสูง</SelectItem>
                 <SelectItem value="price-desc">ราคาสูงไปต่ำ</SelectItem>
-                <SelectItem value="name">ชื่อ</SelectItem>
+                <SelectItem value="name">ชื่อสินค้า</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -266,7 +266,7 @@ export default function ProductsPage() {
                     compareAtPrice: product.compareAtPrice,
                     image: product.images[0],
                     category: product.category,
-                    badge: product.status === "active" ? undefined : product.status === "draft" ? "Draft" : "Archived",
+                    badge: product.status === "active" ? undefined : product.status === "draft" ? "ฉบับร่าง" : "เก็บถาวร",
                   }}
                 />
               ))}
@@ -274,7 +274,7 @@ export default function ProductsPage() {
           ) : (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-16">
-                <p className="text-muted-foreground mb-4">No products found matching your filters.</p>
+                <p className="text-muted-foreground mb-4">ไม่พบสินค้าที่ตรงกับตัวกรอง</p>
                 <Button
                   variant="outline"
                   onClick={() => {
@@ -282,7 +282,7 @@ export default function ProductsPage() {
                     setPriceRange([0, 10000]);
                   }}
                 >
-                  Clear Filters
+                  ล้างตัวกรอง
                 </Button>
               </CardContent>
             </Card>

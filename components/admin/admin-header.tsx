@@ -32,7 +32,7 @@ export function AdminHeader() {
       <div className="flex-1 max-w-md">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input type="search" placeholder="Search products, orders, customers..." className="w-full pl-10 bg-muted/50 border-0 focus-visible:ring-1" />
+          <Input type="search" placeholder="ค้นหาสินค้า คำสั่งซื้อ หรือลูกค้า..." className="w-full pl-10 bg-muted/50 border-0 focus-visible:ring-1" />
         </div>
       </div>
 
@@ -41,14 +41,14 @@ export function AdminHeader() {
         {/* Theme Toggle */}
         <Button variant="ghost" size="icon" onClick={toggleTheme} className="text-muted-foreground">
           {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-          <span className="sr-only">Toggle theme</span>
+          <span className="sr-only">สลับธีม</span>
         </Button>
 
         {/* Notifications */}
         <Button variant="ghost" size="icon" className="relative text-muted-foreground">
           <Bell className="h-5 w-5" />
           <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary" />
-          <span className="sr-only">Notifications</span>
+          <span className="sr-only">การแจ้งเตือน</span>
         </Button>
 
         {/* User Menu */}
@@ -63,15 +63,15 @@ export function AdminHeader() {
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">Admin User</p>
+                <p className="text-sm font-medium leading-none">ผู้ดูแลระบบ</p>
                 <p className="text-xs leading-none text-muted-foreground">admin@example.com</p>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Profile</DropdownMenuItem>
-            <DropdownMenuItem>Settings</DropdownMenuItem>
+            <DropdownMenuItem>โปรไฟล์</DropdownMenuItem>
+            <DropdownMenuItem>ตั้งค่า</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">Log out</DropdownMenuItem>
+            <DropdownMenuItem className="text-destructive">ออกจากระบบ</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

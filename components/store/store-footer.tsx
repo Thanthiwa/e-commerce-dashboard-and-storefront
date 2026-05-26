@@ -3,27 +3,27 @@ import { Store } from "lucide-react";
 
 const footerLinks = {
   shop: [
-    { href: "/products", label: "All Products" },
-    { href: "/products?category=electronics", label: "Electronics" },
-    { href: "/products?category=clothing", label: "Clothing" },
-    { href: "/products?category=home-garden", label: "Home & Garden" },
+    { href: "/products", label: "สินค้าทั้งหมด" },
+    { href: "/products?category=electronics", label: "อิเล็กทรอนิกส์" },
+    { href: "/products?category=clothing", label: "เสื้อผ้า" },
+    { href: "/products?category=home-garden", label: "บ้านและสวน" },
   ],
   support: [
-    { href: "/contact", label: "Contact Us" },
-    { href: "/faq", label: "FAQ" },
-    { href: "/shipping", label: "Shipping Info" },
-    { href: "/returns", label: "Returns" },
+    { href: "/contact", label: "ติดต่อเรา" },
+    { href: "/faq", label: "คำถามที่พบบ่อย" },
+    { href: "/shipping", label: "ข้อมูลการจัดส่ง" },
+    { href: "/returns", label: "การคืนสินค้า" },
   ],
   company: [
-    { href: "/about", label: "About Us" },
-    { href: "/careers", label: "Careers" },
-    { href: "/blog", label: "Blog" },
-    { href: "/press", label: "Press" },
+    { href: "/about", label: "เกี่ยวกับเรา" },
+    { href: "/careers", label: "ร่วมงานกับเรา" },
+    { href: "/blog", label: "บทความ" },
+    { href: "/press", label: "ข่าวประชาสัมพันธ์" },
   ],
   legal: [
-    { href: "/privacy", label: "Privacy Policy" },
-    { href: "/terms", label: "Terms of Service" },
-    { href: "/cookies", label: "Cookie Policy" },
+    { href: "/privacy", label: "นโยบายความเป็นส่วนตัว" },
+    { href: "/terms", label: "เงื่อนไขการใช้บริการ" },
+    { href: "/cookies", label: "นโยบายคุกกี้" },
   ],
 };
 
@@ -38,14 +38,14 @@ export function StoreFooter() {
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                 <Store className="h-4 w-4" />
               </div>
-              <span className="text-lg font-semibold">Commerce</span>
+              <span className="text-lg font-semibold">ร้านคอมเมิร์ซ</span>
             </Link>
-            <p className="text-sm text-muted-foreground">Your one-stop shop for quality products at great prices.</p>
+            <p className="text-sm text-muted-foreground">แหล่งรวมสินค้าคุณภาพในราคาคุ้มค่า ครบจบในที่เดียว</p>
           </div>
 
           {/* Shop Links */}
           <div>
-            <h3 className="font-semibold mb-4">Shop</h3>
+            <h3 className="font-semibold mb-4">ช้อปปิ้ง</h3>
             <ul className="space-y-2">
               {footerLinks.shop.map((link) => (
                 <li key={link.href}>
@@ -59,7 +59,7 @@ export function StoreFooter() {
 
           {/* Support Links */}
           <div>
-            <h3 className="font-semibold mb-4">Support</h3>
+            <h3 className="font-semibold mb-4">ช่วยเหลือ</h3>
             <ul className="space-y-2">
               {footerLinks.support.map((link) => (
                 <li key={link.href}>
@@ -73,7 +73,7 @@ export function StoreFooter() {
 
           {/* Company Links */}
           <div>
-            <h3 className="font-semibold mb-4">Company</h3>
+            <h3 className="font-semibold mb-4">บริษัท</h3>
             <ul className="space-y-2">
               {footerLinks.company.map((link) => (
                 <li key={link.href}>
@@ -87,7 +87,7 @@ export function StoreFooter() {
 
           {/* Legal Links */}
           <div>
-            <h3 className="font-semibold mb-4">Legal</h3>
+            <h3 className="font-semibold mb-4">กฎหมาย</h3>
             <ul className="space-y-2">
               {footerLinks.legal.map((link) => (
                 <li key={link.href}>
@@ -103,9 +103,9 @@ export function StoreFooter() {
         {/* Bottom Bar */}
         <div className="mt-12 pt-8 border-t border-border">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-muted-foreground">&copy; {new Date().getFullYear()} Commerce Store. All rights reserved.</p>
+            <p className="text-sm text-muted-foreground">&copy; {new Date().getFullYear()} ร้านคอมเมิร์ซ สงวนลิขสิทธิ์</p>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-muted-foreground">Powered by Next.js & MongoDB</span>
+              <span className="text-sm text-muted-foreground">ขับเคลื่อนด้วย Next.js และ MongoDB</span>
             </div>
           </div>
         </div>

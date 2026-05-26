@@ -17,7 +17,7 @@ export default function EditProductPage() {
       try {
         const res = await fetch(`/api/products/${productId}`);
         if (!res.ok) {
-          throw new Error("Product not found");
+          throw new Error("ไม่พบสินค้า");
         }
         const data = await res.json();
         // Transform the data for the form
@@ -26,7 +26,7 @@ export default function EditProductPage() {
           category: data.category?._id || data.category,
         });
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load product");
+        setError(err instanceof Error ? err.message : "โหลดสินค้าไม่สำเร็จ");
       } finally {
         setIsLoading(false);
       }

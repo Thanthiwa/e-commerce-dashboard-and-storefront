@@ -36,6 +36,15 @@ const segmentStyles: Record<string, string> = {
   Lost: "bg-red-500/10 text-red-500",
 };
 
+const segmentLabels: Record<string, string> = {
+  Champions: "ลูกค้าชั้นเยี่ยม",
+  Loyal: "ลูกค้าประจำ",
+  Potential: "มีแนวโน้มซื้อซ้ำ",
+  New: "ลูกค้าใหม่",
+  "At-Risk": "เสี่ยงหาย",
+  Lost: "ไม่ได้ซื้อแล้ว",
+};
+
 function getInitials(name: string) {
   return name
     .split(" ")
@@ -58,8 +67,8 @@ export default function CustomersPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Customers</h1>
-        <p className="text-muted-foreground">View and manage your customer base</p>
+        <h1 className="text-2xl font-semibold tracking-tight">ลูกค้า</h1>
+        <p className="text-muted-foreground">ดูและจัดการฐานลูกค้าของคุณ</p>
       </div>
 
       {/* Stats Cards */}
@@ -67,25 +76,25 @@ export default function CustomersPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">{customers.length}</div>
-            <p className="text-xs text-muted-foreground">Total Customers</p>
+            <p className="text-xs text-muted-foreground">ลูกค้าทั้งหมด</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">{customers.filter((c) => c.segment === "Champions" || c.segment === "Loyal").length}</div>
-            <p className="text-xs text-muted-foreground">VIP Customers</p>
+            <p className="text-xs text-muted-foreground">ลูกค้า VIP</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">{customers.filter((c) => c.segment === "At-Risk" || c.segment === "Lost").length}</div>
-            <p className="text-xs text-muted-foreground">At Risk</p>
+            <p className="text-xs text-muted-foreground">กลุ่มเสี่ยงหาย</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">{formatCurrency(customers.reduce((sum, c) => sum + c.spent, 0) / customers.length)}</div>
-            <p className="text-xs text-muted-foreground">Avg. Lifetime Value</p>
+            <p className="text-xs text-muted-foreground">มูลค่าเฉลี่ยตลอดอายุลูกค้า</p>
           </CardContent>
         </Card>
       </div>
@@ -96,20 +105,20 @@ export default function CustomersPage() {
           <div className="flex items-center gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Search customers..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
+              <Input placeholder="ค้นหาลูกค้า..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
             </div>
             <Select value={segmentFilter} onValueChange={setSegmentFilter}>
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by segment" />
+                <SelectValue placeholder="กรองตามกลุ่มลูกค้า" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Segments</SelectItem>
-                <SelectItem value="Champions">Champions</SelectItem>
-                <SelectItem value="Loyal">Loyal</SelectItem>
-                <SelectItem value="Potential">Potential</SelectItem>
-                <SelectItem value="New">New</SelectItem>
-                <SelectItem value="At-Risk">At-Risk</SelectItem>
-                <SelectItem value="Lost">Lost</SelectItem>
+                <SelectItem value="all">ทุกกลุ่ม</SelectItem>
+                <SelectItem value="Champions">ลูกค้าชั้นเยี่ยม</SelectItem>
+                <SelectItem value="Loyal">ลูกค้าประจำ</SelectItem>
+                <SelectItem value="Potential">มีแนวโน้มซื้อซ้ำ</SelectItem>
+                <SelectItem value="New">ลูกค้าใหม่</SelectItem>
+                <SelectItem value="At-Risk">เสี่ยงหาย</SelectItem>
+                <SelectItem value="Lost">ไม่ได้ซื้อแล้ว</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -119,20 +128,20 @@ export default function CustomersPage() {
       {/* Customers Table */}
       <Card>
         <CardHeader>
-          <CardTitle>All Customers</CardTitle>
+          <CardTitle>ลูกค้าทั้งหมด</CardTitle>
           <CardDescription>
-            {filteredCustomers.length} customer{filteredCustomers.length !== 1 ? "s" : ""} found
+            พบ {filteredCustomers.length} คน
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Customer</TableHead>
-                <TableHead className="text-center">Orders</TableHead>
-                <TableHead className="text-right">Total Spent</TableHead>
-                <TableHead>Last Order</TableHead>
-                <TableHead>Segment</TableHead>
+                <TableHead>ลูกค้า</TableHead>
+                <TableHead className="text-center">คำสั่งซื้อ</TableHead>
+                <TableHead className="text-right">ยอดใช้จ่ายรวม</TableHead>
+                <TableHead>คำสั่งซื้อล่าสุด</TableHead>
+                <TableHead>กลุ่มลูกค้า</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -155,7 +164,7 @@ export default function CustomersPage() {
                   <TableCell className="text-muted-foreground">{customer.lastOrder}</TableCell>
                   <TableCell>
                     <Badge variant="secondary" className={cn(segmentStyles[customer.segment])}>
-                      {customer.segment}
+                      {segmentLabels[customer.segment] || customer.segment}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -168,15 +177,15 @@ export default function CustomersPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem>
                           <Eye className="mr-2 h-4 w-4" />
-                          View Profile
+                          ดูโปรไฟล์
                         </DropdownMenuItem>
                         <DropdownMenuItem>
                           <Mail className="mr-2 h-4 w-4" />
-                          Send Email
+                          ส่งอีเมล
                         </DropdownMenuItem>
                         <DropdownMenuItem>
                           <Tag className="mr-2 h-4 w-4" />
-                          Add Tag
+                          เพิ่มแท็ก
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

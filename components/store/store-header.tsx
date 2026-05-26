@@ -18,9 +18,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const navLinks = [
-  { href: "/", label: "Home" },
-  { href: "/products", label: "Products" },
-  { href: "/categories", label: "Categories" },
+  { href: "/", label: "หน้าแรก" },
+  { href: "/products", label: "สินค้า" },
+  { href: "/categories", label: "หมวดหมู่" },
 ];
 
 export function StoreHeader() {
@@ -38,7 +38,7 @@ export function StoreHeader() {
           setUser(data.user);
         }
       } catch (error) {
-        console.error("Failed to fetch user", error);
+        console.error("โหลดข้อมูลผู้ใช้ไม่สำเร็จ", error);
       } finally {
         setLoading(false);
       }
@@ -53,7 +53,7 @@ export function StoreHeader() {
       router.push("/login");
       router.refresh();
     } catch (error) {
-      console.error("Logout failed", error);
+      console.error("ออกจากระบบไม่สำเร็จ", error);
     }
   };
 
@@ -66,12 +66,12 @@ export function StoreHeader() {
             <SheetTrigger asChild className="lg:hidden">
               <Button variant="ghost" size="icon">
                 <Menu className="h-5 w-5" />
-                <span className="sr-only">Toggle menu</span>
+                <span className="sr-only">เปิดเมนู</span>
               </Button>
             </SheetTrigger>
             <SheetContent side="left">
               <SheetHeader>
-                <SheetTitle>Menu</SheetTitle>
+                <SheetTitle>เมนู</SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col gap-4 mt-8">
                 {navLinks.map((link) => (
@@ -88,7 +88,7 @@ export function StoreHeader() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <Store className="h-4 w-4" />
             </div>
-            <span className="text-lg font-semibold hidden sm:inline-block">Commerce Store</span>
+            <span className="text-lg font-semibold hidden sm:inline-block">ร้านคอมเมิร์ซ</span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -106,14 +106,14 @@ export function StoreHeader() {
             <div className="hidden md:block">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input type="search" placeholder="Search products..." className="w-64 pl-10 bg-muted/50 border-0" />
+                <Input type="search" placeholder="ค้นหาสินค้า..." className="w-64 pl-10 bg-muted/50 border-0" />
               </div>
             </div>
 
             {/* Mobile Search */}
             <Button variant="ghost" size="icon" className="md:hidden">
               <Search className="h-5 w-5" />
-              <span className="sr-only">Search</span>
+              <span className="sr-only">ค้นหา</span>
             </Button>
 
             {/* Account */}
@@ -127,17 +127,17 @@ export function StoreHeader() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                    <DropdownMenuLabel>บัญชีของฉัน</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
                       <Link href="/profile" className="flex items-center gap-2 cursor-pointer">
                         <User className="h-4 w-4" />
-                        <span>Profile Settings</span>
+                        <span>ตั้งค่าโปรไฟล์</span>
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem className="flex items-center gap-2 cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50" onClick={handleLogout}>
                       <LogOut className="h-4 w-4" />
-                      <span>Log out</span>
+                      <span>ออกจากระบบ</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -145,7 +145,7 @@ export function StoreHeader() {
                 <Button variant="ghost" size="icon" asChild>
                   <Link href="/login">
                     <User className="h-5 w-5" />
-                    <span className="sr-only">Account</span>
+                    <span className="sr-only">บัญชี</span>
                   </Link>
                 </Button>
               )
@@ -156,7 +156,7 @@ export function StoreHeader() {
               <Link href="/cart">
                 <ShoppingCart className="h-5 w-5" />
                 <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] font-medium text-primary-foreground flex items-center justify-center">3</span>
-                <span className="sr-only">Cart</span>
+                <span className="sr-only">ตะกร้าสินค้า</span>
               </Link>
             </Button>
           </div>

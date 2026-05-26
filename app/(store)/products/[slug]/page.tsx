@@ -35,13 +35,13 @@ export default function ProductDetailPage() {
         const res = await fetch(`/api/products/${slug}`);
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(data.error || "Product not found");
+          throw new Error(data.error || "ไม่พบสินค้า");
         }
 
         const productData = {
           ...data,
           images: Array.isArray(data.images) && data.images.length ? data.images : [placeholderImage],
-          category: typeof data.category === "object" ? data.category : { name: data.category || "Uncategorized", slug: "" },
+          category: typeof data.category === "object" ? data.category : { name: data.category || "ไม่ระบุหมวดหมู่", slug: "" },
           stock: data.quantity ?? 0,
           features:
             data.features?.length > 0
@@ -62,7 +62,7 @@ export default function ProductDetailPage() {
           }, {})
         );
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load product");
+        setError(err instanceof Error ? err.message : "โหลดสินค้าไม่สำเร็จ");
       } finally {
         setIsLoading(false);
       }
@@ -90,7 +90,7 @@ export default function ProductDetailPage() {
           );
         }
       } catch (err) {
-        console.error("Failed to load related products", err);
+        console.error("โหลดสินค้าที่เกี่ยวข้องไม่สำเร็จ", err);
       }
     };
 
@@ -144,7 +144,7 @@ export default function ProductDetailPage() {
               <button
                 key={index}
                 type="button"
-                aria-label={`View image ${index + 1}`}
+                aria-label={`ดูรูปภาพที่ ${index + 1}`}
                 onClick={() => setSelectedImage(index)}
                 className={`relative aspect-square bg-muted rounded-lg overflow-hidden border-2 transition-colors ${
                   selectedImage === index ? "border-primary" : "border-transparent hover:border-muted-foreground/50"
@@ -173,7 +173,7 @@ export default function ProductDetailPage() {
             <div className="flex items-baseline gap-3">
               <span className="text-3xl font-bold">{formatCurrency(product.price)}</span>
               {product.compareAtPrice && <span className="text-xl text-muted-foreground line-through">{formatCurrency(product.compareAtPrice)}</span>}
-              {discount > 0 && <Badge variant="destructive">Save {discount}%</Badge>}
+              {discount > 0 && <Badge variant="destructive">ประหยัด {discount}%</Badge>}
             </div>
           </div>
 
@@ -184,7 +184,7 @@ export default function ProductDetailPage() {
               <label className="text-sm font-medium mb-2 block">{variant.name}</label>
               <Select value={selectedVariants[variant.name] || ""} onValueChange={(value) => setSelectedVariants({ ...selectedVariants, [variant.name]: value })}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder={`Select ${variant.name}`} />
+                  <SelectValue placeholder={`เลือก${variant.name}`} />
                 </SelectTrigger>
                 <SelectContent>
                   {(variant.options || []).map((option: string) => (
@@ -278,14 +278,14 @@ export default function ProductDetailPage() {
         <TabsContent value="reviews" className="mt-6">
           <Card>
             <CardContent className="p-6">
-              <p className="text-muted-foreground">Reviews coming soon...</p>
+              <p className="text-muted-foreground">รีวิวจะพร้อมให้ดูเร็ว ๆ นี้</p>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
 
       <section className="mt-16">
-        <h2 className="text-2xl font-bold mb-6">You May Also Like</h2>
+        <h2 className="text-2xl font-bold mb-6">สินค้าที่คุณอาจชอบ</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           {relatedProducts.length > 0 ? (
             relatedProducts.map((relatedProduct) => (
@@ -302,7 +302,7 @@ export default function ProductDetailPage() {
               />
             ))
           ) : (
-            <p className="text-muted-foreground">No related products found.</p>
+            <p className="text-muted-foreground">ไม่พบสินค้าที่เกี่ยวข้อง</p>
           )}
         </div>
       </section>

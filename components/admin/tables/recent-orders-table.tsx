@@ -53,6 +53,14 @@ const statusStyles: Record<string, string> = {
   cancelled: "bg-red-500/10 text-red-500 hover:bg-red-500/20",
 };
 
+const statusLabels: Record<string, string> = {
+  pending: "รอดำเนินการ",
+  processing: "กำลังเตรียม",
+  shipped: "จัดส่งแล้ว",
+  delivered: "ส่งถึงแล้ว",
+  cancelled: "ยกเลิกแล้ว",
+};
+
 export function RecentOrdersTable() {
   return (
     <div className="space-y-4">
@@ -67,8 +75,8 @@ export function RecentOrdersTable() {
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm font-medium">{formatCurrency(order.total)}</span>
-            <Badge variant="secondary" className={cn("capitalize", statusStyles[order.status])}>
-              {order.status}
+            <Badge variant="secondary" className={cn(statusStyles[order.status])}>
+              {statusLabels[order.status] || order.status}
             </Badge>
           </div>
         </div>

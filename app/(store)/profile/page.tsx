@@ -68,7 +68,7 @@ export default function ProfilePage() {
         avatar: data.user.avatar || "",
       });
     } catch (err) {
-      setError("Failed to load profile");
+      setError("โหลดโปรไฟล์ไม่สำเร็จ");
     } finally {
       setLoading(false);
     }

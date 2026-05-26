@@ -27,6 +27,11 @@ const statusStyles: Record<string, string> = {
   inactive: "bg-gray-500/10 text-gray-500",
 };
 
+const statusLabels: Record<string, string> = {
+  active: "ใช้งาน",
+  inactive: "ปิดใช้งาน",
+};
+
 export default function CategoriesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -182,8 +187,8 @@ export default function CategoriesPage() {
                 <span className="text-sm">
                   <span className="font-semibold">{category.productCount}</span> สินค้า
                 </span>
-                <Badge variant="secondary" className={cn("capitalize", statusStyles[category.status])}>
-                  {category.status}
+                <Badge variant="secondary" className={cn(statusStyles[category.status])}>
+                  {statusLabels[category.status] || category.status}
                 </Badge>
               </div>
             </CardContent>

@@ -98,14 +98,14 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
       });
 
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to upload image");
+      if (!res.ok) throw new Error(json.error || "อัปโหลดรูปภาพไม่สำเร็จ");
 
       setFormData((prev) => ({
         ...prev,
         images: [...prev.images, json.url],
       }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to upload image");
+      setError(err instanceof Error ? err.message : "อัปโหลดรูปภาพไม่สำเร็จ");
     } finally {
       setIsUploading(false);
       // Reset input value so same file can be selected again if needed
@@ -128,7 +128,7 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
         const data = await res.json();
         setCategories(data.categories || []);
       } catch (err) {
-        console.error("Failed to fetch categories:", err);
+        console.error("โหลดหมวดหมู่ไม่สำเร็จ:", err);
       }
     };
     fetchCategories();
@@ -182,10 +182,10 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
 
     try {
       // Validation
-      if (!formData.name.trim()) throw new Error("Product name is required");
-      if (!formData.sku.trim()) throw new Error("SKU is required");
-      if (!formData.category) throw new Error("Category is required");
-      if (formData.price < 0) throw new Error("Price cannot be negative");
+      if (!formData.name.trim()) throw new Error("กรุณากรอกชื่อสินค้า");
+      if (!formData.sku.trim()) throw new Error("กรุณากรอก SKU");
+      if (!formData.category) throw new Error("กรุณาเลือกหมวดหมู่");
+      if (formData.price < 0) throw new Error("ราคาต้องไม่ติดลบ");
 
       const url = productId ? `/api/products/${productId}` : "/api/products";
       const method = productId ? "PUT" : "POST";
@@ -202,13 +202,13 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Failed to save product");
+        throw new Error(data.error || "บันทึกสินค้าไม่สำเร็จ");
       }
 
       router.push("/admin/products");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
     } finally {
       setIsSaving(false);
     }
@@ -237,10 +237,10 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
           </Button>
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">
-              {productId ? "Edit Product" : "Add Product"}
+              {productId ? "แก้ไขสินค้า" : "เพิ่มสินค้า"}
             </h1>
             <p className="text-muted-foreground">
-              {productId ? "Update product details" : "Create a new product"}
+              {productId ? "อัปเดตรายละเอียดสินค้า" : "สร้างสินค้าใหม่"}
             </p>
           </div>
         </div>
@@ -253,9 +253,9 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="archived">Archived</SelectItem>
+              <SelectItem value="draft">ฉบับร่าง</SelectItem>
+              <SelectItem value="active">เปิดขาย</SelectItem>
+              <SelectItem value="archived">เก็บถาวร</SelectItem>
             </SelectContent>
           </Select>
           <Button type="submit" disabled={isSaving}>
@@ -264,7 +264,7 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
             ) : (
               <Save className="mr-2 h-4 w-4" />
             )}
-            {productId ? "Update" : "Create"} Product
+            {productId ? "อัปเดต" : "สร้าง"}สินค้า
           </Button>
         </div>
       </div>
@@ -283,36 +283,36 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
           {/* Basic Information */}
           <Card>
             <CardHeader>
-              <CardTitle>Basic Information</CardTitle>
+              <CardTitle>ข้อมูลพื้นฐาน</CardTitle>
               <CardDescription>
-                Core product details like name, description, and pricing
+                รายละเอียดหลัก เช่น ชื่อสินค้า คำอธิบาย และราคา
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Product Name *</Label>
+                <Label htmlFor="name">ชื่อสินค้า *</Label>
                 <Input
                   id="name"
                   value={formData.name}
                   onChange={(e) => handleChange("name", e.target.value)}
-                  placeholder="e.g., Wireless Bluetooth Headphones"
+                  placeholder="เช่น หูฟังบลูทูธไร้สาย"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description *</Label>
+                <Label htmlFor="description">คำอธิบาย *</Label>
                 <Textarea
                   id="description"
                   value={formData.description}
                   onChange={(e) => handleChange("description", e.target.value)}
-                  placeholder="Describe your product..."
+                  placeholder="อธิบายรายละเอียดสินค้า..."
                   rows={4}
                 />
               </div>
 
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="space-y-2">
-                  <Label htmlFor="price">Price *</Label>
+                  <Label htmlFor="price">ราคา *</Label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                       ฿
@@ -335,9 +335,9 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
           {/* Media (Images) */}
           <Card>
             <CardHeader>
-              <CardTitle>Media</CardTitle>
+              <CardTitle>สื่อสินค้า</CardTitle>
               <CardDescription>
-                Add product images. The first image will be used as the main image.
+                เพิ่มรูปภาพสินค้า โดยรูปแรกจะใช้เป็นรูปหลัก
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -345,7 +345,7 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
                 {formData.images.map((url, index) => (
                   <div key={index} className="group relative aspect-square overflow-hidden rounded-md border">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={url} alt={`Product image ${index + 1}`} className="h-full w-full object-cover" />
+                    <img src={url} alt={`รูปสินค้า ${index + 1}`} className="h-full w-full object-cover" />
                     <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
                       <Button
                         type="button"
@@ -371,7 +371,7 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
                   ) : (
                     <>
                       <Upload className="h-6 w-6" />
-                      <span className="text-xs font-medium">Upload Image</span>
+                      <span className="text-xs font-medium">อัปโหลดรูป</span>
                     </>
                   )}
                   <input
@@ -379,7 +379,7 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
                     type="file"
                     accept="image/*"
                     className="sr-only"
-                    aria-label="Upload product image"
+                    aria-label="อัปโหลดรูปสินค้า"
                     onChange={handleImageUpload}
                     disabled={isUploading}
                   />
@@ -395,17 +395,17 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
           {/* Organization */}
           <Card>
             <CardHeader>
-              <CardTitle>Organization</CardTitle>
+              <CardTitle>การจัดหมวดหมู่</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Category *</Label>
+                <Label>หมวดหมู่ *</Label>
                 <Select
                   value={formData.category}
                   onValueChange={(value) => handleChange("category", value)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
+                    <SelectValue placeholder="เลือกหมวดหมู่" />
                   </SelectTrigger>
                   <SelectContent>
                     {categories.map((cat) => (
@@ -418,12 +418,12 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
               </div>
 
               <div className="space-y-2">
-                <Label>Tags</Label>
+                <Label>แท็ก</Label>
                 <div className="flex gap-2">
                   <Input
                     value={tagInput}
                     onChange={(e) => setTagInput(e.target.value)}
-                    placeholder="Add tag"
+                    placeholder="เพิ่มแท็ก"
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
@@ -457,7 +457,7 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
           {/* Inventory */}
           <Card>
             <CardHeader>
-              <CardTitle>Inventory</CardTitle>
+              <CardTitle>คลังสินค้า</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -475,15 +475,15 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
                     variant="outline"
                     size="icon"
                     onClick={generateSku}
-                    title="Generate SKU"
+                    title="สร้าง SKU"
                   >
-                    <span className="text-xs font-bold">GEN</span>
+                    <span className="text-xs font-bold">สร้าง</span>
                   </Button>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="barcode">Barcode</Label>
+                <Label htmlFor="barcode">บาร์โค้ด</Label>
                 <Input
                   id="barcode"
                   value={formData.barcode || ""}
@@ -496,7 +496,7 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="quantity">Quantity</Label>
+                <Label htmlFor="quantity">จำนวน</Label>
                   <Input
                     id="quantity"
                     type="number"
@@ -506,7 +506,7 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="lowStockThreshold">Low Stock Alert</Label>
+                  <Label htmlFor="lowStockThreshold">แจ้งเตือนสต็อกต่ำ</Label>
                   <Input
                     id="lowStockThreshold"
                     type="number"
@@ -520,12 +520,12 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
 
               {formData.quantity <= formData.lowStockThreshold && formData.quantity > 0 && (
                 <div className="rounded bg-yellow-500/10 px-3 py-2 text-sm text-yellow-600">
-                  Low stock warning
+                  สต็อกใกล้หมด
                 </div>
               )}
               {formData.quantity === 0 && (
                 <div className="rounded bg-red-500/10 px-3 py-2 text-sm text-red-600">
-                  Out of stock
+                  สินค้าหมด
                 </div>
               )}
             </CardContent>

@@ -19,6 +19,7 @@ interface Product {
 
 export function ProductCard({ product }: { product: Product }) {
   const discount = product.compareAtPrice ? Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100) : 0;
+  const badgeLabel = product.badge === "Sale" || product.badge === "ลดราคา" ? "ลดราคา" : product.badge === "New" || product.badge === "ใหม่" ? "ใหม่" : product.badge;
 
   return (
     <Card className="group overflow-hidden">
@@ -26,8 +27,8 @@ export function ProductCard({ product }: { product: Product }) {
         <div className="relative aspect-square bg-muted overflow-hidden">
           <Image src={product.image} alt={product.name} fill className="object-cover transition-transform group-hover:scale-105" />
           {product.badge && (
-            <Badge className="absolute top-3 left-3" variant={product.badge === "Sale" ? "destructive" : "default"}>
-              {product.badge}
+            <Badge className="absolute top-3 left-3" variant={badgeLabel === "ลดราคา" ? "destructive" : "default"}>
+              {badgeLabel}
             </Badge>
           )}
           {discount > 0 && <Badge className="absolute top-3 right-3 bg-red-500 text-white">-{discount}%</Badge>}
@@ -45,7 +46,7 @@ export function ProductCard({ product }: { product: Product }) {
           </div>
           <Button size="icon" variant="outline" className="h-8 w-8">
             <ShoppingCart className="h-4 w-4" />
-            <span className="sr-only">Add to cart</span>
+            <span className="sr-only">เพิ่มลงตะกร้า</span>
           </Button>
         </div>
       </CardContent>

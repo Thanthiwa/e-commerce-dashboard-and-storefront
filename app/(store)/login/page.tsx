@@ -58,7 +58,7 @@ function LoginForm() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {isRegistered && (
               <Alert className="bg-emerald-50 text-emerald-600 border-emerald-200">
-                <AlertDescription>Registration successful! You can now log in.</AlertDescription>
+                <AlertDescription>สมัครสมาชิกสำเร็จ ตอนนี้เข้าสู่ระบบได้แล้ว</AlertDescription>
               </Alert>
             )}
             {error && (

@@ -1,14 +1,10 @@
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
-
 export const metadata: Metadata = {
-  title: 'Commerce Pro - E-commerce Platform',
-  description: 'Modern e-commerce admin dashboard and storefront with integrated data mining analytics',
+  title: 'คอมเมิร์ซโปร - แพลตฟอร์มอีคอมเมิร์ซ',
+  description: 'แดชบอร์ดผู้ดูแลและหน้าร้านออนไลน์ภาษาไทย พร้อมระบบวิเคราะห์ข้อมูลการขาย',
   generator: 'v0.app',
   icons: {
     icon: [
@@ -35,7 +31,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="bg-background">
+    <html lang="th" className="bg-background">
       <body className="font-sans antialiased">
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}

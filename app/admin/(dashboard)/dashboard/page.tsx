@@ -5,7 +5,6 @@ import { SalesByCategoryChart } from "@/components/admin/charts/sales-by-categor
 import { RecentOrdersTable } from "@/components/admin/tables/recent-orders-table";
 import { TopProductsTable } from "@/components/admin/tables/top-products-table";
 
-// Demo data - in production this would come from API
 const kpiData = {
   revenue: {
     value: 124589.0,
@@ -30,16 +29,16 @@ const kpiData = {
 };
 
 function formatCurrency(value: number) {
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("th-TH", {
     style: "currency",
-    currency: "USD",
+    currency: "THB",
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(value);
 }
 
 function formatNumber(value: number) {
-  return new Intl.NumberFormat("en-US").format(value);
+  return new Intl.NumberFormat("th-TH").format(value);
 }
 
 export default function DashboardPage() {
@@ -47,8 +46,8 @@ export default function DashboardPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">Overview of your store performance</p>
+        <h1 className="text-2xl font-semibold tracking-tight">แดชบอร์ด</h1>
+        <p className="text-muted-foreground">ภาพรวมประสิทธิภาพร้านค้าของคุณ</p>
       </div>
 
       {/* KPI Cards */}
@@ -56,7 +55,7 @@ export default function DashboardPage() {
         {/* Revenue Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">รายได้รวม</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -73,7 +72,7 @@ export default function DashboardPage() {
                   <span className="text-red-500">{kpiData.revenue.change}%</span>
                 </>
               )}
-              <span className="text-muted-foreground">from last month</span>
+              <span className="text-muted-foreground">จากเดือนที่แล้ว</span>
             </div>
           </CardContent>
         </Card>
@@ -81,7 +80,7 @@ export default function DashboardPage() {
         {/* Orders Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Orders</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">คำสั่งซื้อทั้งหมด</CardTitle>
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -98,7 +97,7 @@ export default function DashboardPage() {
                   <span className="text-red-500">{kpiData.orders.change}%</span>
                 </>
               )}
-              <span className="text-muted-foreground">from last month</span>
+              <span className="text-muted-foreground">จากเดือนที่แล้ว</span>
             </div>
           </CardContent>
         </Card>
@@ -106,7 +105,7 @@ export default function DashboardPage() {
         {/* Customers Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">New Customers</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">ลูกค้าใหม่</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -123,7 +122,7 @@ export default function DashboardPage() {
                   <span className="text-red-500">{kpiData.customers.change}%</span>
                 </>
               )}
-              <span className="text-muted-foreground">from last month</span>
+              <span className="text-muted-foreground">จากเดือนที่แล้ว</span>
             </div>
           </CardContent>
         </Card>
@@ -131,7 +130,7 @@ export default function DashboardPage() {
         {/* Products Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active Products</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">สินค้าที่เปิดขาย</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -148,7 +147,7 @@ export default function DashboardPage() {
                   <span className="text-red-500">{kpiData.products.change}%</span>
                 </>
               )}
-              <span className="text-muted-foreground">from last month</span>
+              <span className="text-muted-foreground">จากเดือนที่แล้ว</span>
             </div>
           </CardContent>
         </Card>
@@ -158,8 +157,8 @@ export default function DashboardPage() {
       <div className="grid gap-4 lg:grid-cols-7">
         <Card className="lg:col-span-4">
           <CardHeader>
-            <CardTitle>Revenue Overview</CardTitle>
-            <CardDescription>Monthly revenue for the current year</CardDescription>
+            <CardTitle>ภาพรวมรายได้</CardTitle>
+            <CardDescription>รายได้รายเดือนของปีนี้</CardDescription>
           </CardHeader>
           <CardContent>
             <RevenueChart />
@@ -168,8 +167,8 @@ export default function DashboardPage() {
 
         <Card className="lg:col-span-3">
           <CardHeader>
-            <CardTitle>Sales by Category</CardTitle>
-            <CardDescription>Distribution of sales across categories</CardDescription>
+            <CardTitle>ยอดขายตามหมวดหมู่</CardTitle>
+            <CardDescription>สัดส่วนยอดขายแยกตามหมวดหมู่</CardDescription>
           </CardHeader>
           <CardContent>
             <SalesByCategoryChart />
@@ -181,8 +180,8 @@ export default function DashboardPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Recent Orders</CardTitle>
-            <CardDescription>Latest orders from your store</CardDescription>
+            <CardTitle>คำสั่งซื้อล่าสุด</CardTitle>
+            <CardDescription>รายการสั่งซื้อล่าสุดจากร้านของคุณ</CardDescription>
           </CardHeader>
           <CardContent>
             <RecentOrdersTable />
@@ -191,8 +190,8 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Top Products</CardTitle>
-            <CardDescription>Best selling products this month</CardDescription>
+            <CardTitle>สินค้าขายดี</CardTitle>
+            <CardDescription>สินค้าที่ขายดีที่สุดในเดือนนี้</CardDescription>
           </CardHeader>
           <CardContent>
             <TopProductsTable />
