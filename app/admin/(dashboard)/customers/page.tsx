@@ -1,39 +1,41 @@
 "use client";
 
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { formatCurrency } from "@/lib/utils/format";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { useEffect, useMemo, useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, MoreHorizontal, Eye, Mail, Tag } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Eye, Loader2, Mail, MoreHorizontal, RefreshCcw, Search, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils/format";
 
-// Demo data
-const customers = [
-  { id: "1", name: "John Smith", email: "john@example.com", orders: 12, spent: 1549.88, lastOrder: "2024-05-21", segment: "Champions" },
-  { id: "2", name: "Sarah Johnson", email: "sarah@example.com", orders: 8, spent: 892.5, lastOrder: "2024-05-21", segment: "Loyal" },
-  { id: "3", name: "Michael Brown", email: "michael@example.com", orders: 3, spent: 267.97, lastOrder: "2024-05-20", segment: "Potential" },
-  { id: "4", name: "Emily Davis", email: "emily@example.com", orders: 1, spent: 459.0, lastOrder: "2024-05-20", segment: "New" },
-  { id: "5", name: "David Wilson", email: "david@example.com", orders: 5, spent: 599.95, lastOrder: "2024-05-19", segment: "Loyal" },
-  { id: "6", name: "Lisa Anderson", email: "lisa@example.com", orders: 2, spent: 159.98, lastOrder: "2024-05-19", segment: "Potential" },
-  { id: "7", name: "James Taylor", email: "james@example.com", orders: 15, spent: 2499.85, lastOrder: "2024-05-18", segment: "Champions" },
-  { id: "8", name: "Jennifer Martinez", email: "jennifer@example.com", orders: 1, spent: 0, lastOrder: "2024-05-18", segment: "Lost" },
-  { id: "9", name: "Robert Garcia", email: "robert@example.com", orders: 6, spent: 789.94, lastOrder: "2024-04-15", segment: "At-Risk" },
-  { id: "10", name: "Amanda Thompson", email: "amanda@example.com", orders: 4, spent: 399.96, lastOrder: "2024-03-10", segment: "At-Risk" },
-];
+interface ApiCustomer {
+  _id: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  totalOrders?: number;
+  totalSpent?: number;
+  lastOrderDate?: string | null;
+  segment?: string | null;
+}
 
 const segmentStyles: Record<string, string> = {
-  Champions: "bg-emerald-500/10 text-emerald-500",
-  Loyal: "bg-blue-500/10 text-blue-500",
-  Potential: "bg-purple-500/10 text-purple-500",
-  New: "bg-cyan-500/10 text-cyan-500",
-  "At-Risk": "bg-yellow-500/10 text-yellow-500",
-  Lost: "bg-red-500/10 text-red-500",
+  Champions: "bg-emerald-500/10 text-emerald-600",
+  Loyal: "bg-blue-500/10 text-blue-600",
+  Potential: "bg-purple-500/10 text-purple-600",
+  New: "bg-cyan-500/10 text-cyan-600",
+  "At-Risk": "bg-yellow-500/10 text-yellow-600",
+  Lost: "bg-red-500/10 text-red-600",
 };
 
 const segmentLabels: Record<string, string> = {
@@ -45,70 +47,142 @@ const segmentLabels: Record<string, string> = {
   Lost: "ไม่ได้ซื้อแล้ว",
 };
 
+function getCustomerName(customer: ApiCustomer) {
+  const name = `${customer.firstName || ""} ${customer.lastName || ""}`.trim();
+  return name || customer.email;
+}
+
 function getInitials(name: string) {
   return name
     .split(" ")
-    .map((n) => n[0])
+    .filter(Boolean)
+    .map((part) => part[0])
     .join("")
-    .toUpperCase();
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+function formatDate(value?: string | null) {
+  if (!value) {
+    return "-";
+  }
+
+  return new Intl.DateTimeFormat("th-TH", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(new Date(value));
 }
 
 export default function CustomersPage() {
+  const [customers, setCustomers] = useState<ApiCustomer[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [segmentFilter, setSegmentFilter] = useState<string>("all");
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredCustomers = customers.filter((customer) => {
-    const matchesSearch = customer.name.toLowerCase().includes(searchQuery.toLowerCase()) || customer.email.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesSegment = segmentFilter === "all" || customer.segment === segmentFilter;
-    return matchesSearch && matchesSegment;
-  });
+  const fetchCustomers = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/customers?limit=100", { cache: "no-store" });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "โหลดข้อมูลลูกค้าไม่สำเร็จ");
+      }
+
+      setCustomers(Array.isArray(data.customers) ? data.customers : []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "โหลดข้อมูลลูกค้าไม่สำเร็จ");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
+
+  const filteredCustomers = useMemo(() => {
+    const normalizedSearch = searchQuery.trim().toLowerCase();
+
+    return customers.filter((customer) => {
+      const name = getCustomerName(customer).toLowerCase();
+      const email = customer.email.toLowerCase();
+      const matchesSearch =
+        normalizedSearch.length === 0 || name.includes(normalizedSearch) || email.includes(normalizedSearch);
+      const matchesSegment = segmentFilter === "all" || customer.segment === segmentFilter;
+      return matchesSearch && matchesSegment;
+    });
+  }, [customers, searchQuery, segmentFilter]);
+
+  const stats = useMemo(() => {
+    const totalSpent = customers.reduce((sum, customer) => sum + Number(customer.totalSpent || 0), 0);
+
+    return {
+      total: customers.length,
+      vip: customers.filter((customer) => customer.segment === "Champions" || customer.segment === "Loyal").length,
+      atRisk: customers.filter((customer) => customer.segment === "At-Risk" || customer.segment === "Lost").length,
+      averageLifetimeValue: customers.length > 0 ? totalSpent / customers.length : 0,
+    };
+  }, [customers]);
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">ลูกค้า</h1>
-        <p className="text-muted-foreground">ดูและจัดการฐานลูกค้าของคุณ</p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">ลูกค้า</h1>
+          <p className="text-muted-foreground">ดูแลและจัดการฐานลูกค้าจากฐานข้อมูลจริง</p>
+        </div>
+        <Button variant="outline" onClick={fetchCustomers} disabled={isLoading}>
+          {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
+          รีเฟรช
+        </Button>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{customers.length}</div>
+            <div className="text-2xl font-bold">{stats.total}</div>
             <p className="text-xs text-muted-foreground">ลูกค้าทั้งหมด</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{customers.filter((c) => c.segment === "Champions" || c.segment === "Loyal").length}</div>
+            <div className="text-2xl font-bold">{stats.vip}</div>
             <p className="text-xs text-muted-foreground">ลูกค้า VIP</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{customers.filter((c) => c.segment === "At-Risk" || c.segment === "Lost").length}</div>
+            <div className="text-2xl font-bold">{stats.atRisk}</div>
             <p className="text-xs text-muted-foreground">กลุ่มเสี่ยงหาย</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{formatCurrency(customers.reduce((sum, c) => sum + c.spent, 0) / customers.length)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(stats.averageLifetimeValue)}</div>
             <p className="text-xs text-muted-foreground">มูลค่าเฉลี่ยตลอดอายุลูกค้า</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="ค้นหาลูกค้า..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
+              <Input
+                placeholder="ค้นหาลูกค้าหรืออีเมล..."
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                className="pl-10"
+              />
             </div>
             <Select value={segmentFilter} onValueChange={setSegmentFilter}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="กรองตามกลุ่มลูกค้า" />
               </SelectTrigger>
               <SelectContent>
@@ -125,75 +199,92 @@ export default function CustomersPage() {
         </CardContent>
       </Card>
 
-      {/* Customers Table */}
       <Card>
         <CardHeader>
           <CardTitle>ลูกค้าทั้งหมด</CardTitle>
-          <CardDescription>
-            พบ {filteredCustomers.length} คน
-          </CardDescription>
+          <CardDescription>พบ {filteredCustomers.length} คน</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ลูกค้า</TableHead>
-                <TableHead className="text-center">คำสั่งซื้อ</TableHead>
-                <TableHead className="text-right">ยอดใช้จ่ายรวม</TableHead>
-                <TableHead>คำสั่งซื้อล่าสุด</TableHead>
-                <TableHead>กลุ่มลูกค้า</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredCustomers.map((customer) => (
-                <TableRow key={customer.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-9 w-9">
-                        <AvatarFallback className="bg-primary/10 text-primary text-sm">{getInitials(customer.name)}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="font-medium">{customer.name}</div>
-                        <div className="text-xs text-muted-foreground">{customer.email}</div>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center">{customer.orders}</TableCell>
-                  <TableCell className="text-right font-medium">{formatCurrency(customer.spent)}</TableCell>
-                  <TableCell className="text-muted-foreground">{customer.lastOrder}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className={cn(segmentStyles[customer.segment])}>
-                      {segmentLabels[customer.segment] || customer.segment}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          <Eye className="mr-2 h-4 w-4" />
-                          ดูโปรไฟล์
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Mail className="mr-2 h-4 w-4" />
-                          ส่งอีเมล
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Tag className="mr-2 h-4 w-4" />
-                          เพิ่มแท็ก
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+          {error ? (
+            <div className="rounded-md bg-destructive/10 p-4 text-sm text-destructive">{error}</div>
+          ) : isLoading ? (
+            <div className="flex items-center justify-center py-16 text-muted-foreground">
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              กำลังโหลดข้อมูลลูกค้า...
+            </div>
+          ) : filteredCustomers.length === 0 ? (
+            <div className="py-16 text-center text-muted-foreground">ไม่พบลูกค้าที่ตรงกับตัวกรอง</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>ลูกค้า</TableHead>
+                  <TableHead className="text-center">คำสั่งซื้อ</TableHead>
+                  <TableHead className="text-right">ยอดใช้จ่ายรวม</TableHead>
+                  <TableHead>คำสั่งซื้อล่าสุด</TableHead>
+                  <TableHead>กลุ่มลูกค้า</TableHead>
+                  <TableHead className="w-[50px]" />
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredCustomers.map((customer) => {
+                  const name = getCustomerName(customer);
+                  const segment = customer.segment || "New";
+
+                  return (
+                    <TableRow key={customer._id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-9 w-9">
+                            <AvatarFallback className="bg-primary/10 text-sm text-primary">
+                              {getInitials(name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-medium">{name}</div>
+                            <div className="text-xs text-muted-foreground">{customer.email}</div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">{customer.totalOrders || 0}</TableCell>
+                      <TableCell className="text-right font-medium">
+                        {formatCurrency(customer.totalSpent || 0)}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{formatDate(customer.lastOrderDate)}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className={cn(segmentStyles[segment])}>
+                          {segmentLabels[segment] || segment}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem>
+                              <Eye className="mr-2 h-4 w-4" />
+                              ดูโปรไฟล์
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Mail className="mr-2 h-4 w-4" />
+                              ส่งอีเมล
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Tag className="mr-2 h-4 w-4" />
+                              เพิ่มแท็ก
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -1,10 +1,10 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, CheckCircle2, CreditCard, Loader2, ShoppingBag, Truck } from "lucide-react";
+import { ArrowLeft, CheckCircle2, CreditCard, Loader2, QrCode, ShoppingBag, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,8 +15,12 @@ import { useCart } from "@/lib/store/cart-context";
 import { formatCurrency } from "@/lib/utils/format";
 
 interface OrderResult {
+  id?: string;
   orderNumber: string;
   total: number;
+  paymentMethod?: string;
+  paymentReference?: string;
+  paymentSlipUrl?: string;
 }
 
 interface SavedAddress {
@@ -42,6 +46,31 @@ const emptyShippingAddress = {
   country: "TH",
 };
 
+function PaymentQrCode({ amount, reference }: { amount: number; reference: string }) {
+  const cells = Array.from({ length: 121 }, (_, index) => {
+    const row = Math.floor(index / 11);
+    const col = index % 11;
+    const inFinder =
+      (row < 4 && col < 4) ||
+      (row < 4 && col > 6) ||
+      (row > 6 && col < 4);
+    const hashed = (row * 17 + col * 31 + reference.length * 7) % 5;
+    return inFinder || hashed === 0 || hashed === 2;
+  });
+
+  return (
+    <div className="rounded-md border bg-white p-3 text-slate-950">
+      <div className="grid h-36 w-36 grid-cols-11 gap-0.5">
+        {cells.map((filled, index) => (
+          <div key={index} className={filled ? "bg-slate-950" : "bg-white"} />
+        ))}
+      </div>
+      <div className="mt-3 text-center text-xs font-medium">{formatCurrency(amount)}</div>
+      <div className="text-center text-[11px] text-slate-500">{reference}</div>
+    </div>
+  );
+}
+
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, clearCart, totalPrice } = useCart();
@@ -53,6 +82,11 @@ export default function CheckoutPage() {
   const [shippingAddress, setShippingAddress] = useState(emptyShippingAddress);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("cod");
+  const [paymentSlipFile, setPaymentSlipFile] = useState<File | null>(null);
+  const [paymentSlipUrl, setPaymentSlipUrl] = useState("");
+  const [isUploadingSlip, setIsUploadingSlip] = useState(false);
+  const [slipUploadError, setSlipUploadError] = useState("");
 
   const totals = useMemo(() => {
     const shipping = totalPrice > 50 || totalPrice === 0 ? 0 : 9.99;
@@ -74,6 +108,63 @@ export default function CheckoutPage() {
       postalCode: address.postalCode || "",
       country: address.country || "TH",
     });
+  };
+
+  const handleSlipFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    setSlipUploadError("");
+    setPaymentSlipUrl("");
+    setPaymentSlipFile(file || null);
+
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      setSlipUploadError("กรุณาอัปโหลดไฟล์รูปภาพสลิป");
+      setPaymentSlipFile(null);
+      return;
+    }
+
+    setIsUploadingSlip(true);
+
+    try {
+      const uploadData = new FormData();
+      uploadData.append("file", file);
+
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: uploadData,
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "อัปโหลดสลิปไม่สำเร็จ");
+      }
+
+      setPaymentSlipUrl(data.url);
+    } catch (err) {
+      setSlipUploadError(err instanceof Error ? err.message : "อัปโหลดสลิปไม่สำเร็จ");
+    } finally {
+      setIsUploadingSlip(false);
+    }
+  };
+
+  const uploadSlipFile = async (file: File) => {
+    const uploadData = new FormData();
+    uploadData.append("file", file);
+
+    const response = await fetch("/api/upload", {
+      method: "POST",
+      body: uploadData,
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "อัปโหลดสลิปไม่สำเร็จ");
+    }
+
+    return String(data.url || "");
   };
 
   useEffect(() => {
@@ -145,6 +236,7 @@ export default function CheckoutPage() {
     }
 
     setIsSubmitting(true);
+    setSlipUploadError("");
 
     const fullName = shippingAddress.fullName.trim();
     const phone = shippingAddress.phone.trim();
@@ -154,7 +246,7 @@ export default function CheckoutPage() {
     const postalCode = shippingAddress.postalCode.trim();
     const country = shippingAddress.country.trim();
     const formData = new FormData(event.currentTarget);
-    const paymentMethod = String(formData.get("paymentMethod") || "cod");
+    const selectedPaymentMethod = String(formData.get("paymentMethod") || paymentMethod || "cod");
     const notes = String(formData.get("notes") || "").trim();
 
     if (!fullName || !phone || !address || !city || !state || !postalCode || !country) {
@@ -163,7 +255,22 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (selectedPaymentMethod === "qr_code" && !paymentSlipUrl && !paymentSlipFile) {
+      setError("กรุณาแนบรูปสลิปหลังสแกน QR Code ก่อนยืนยันคำสั่งซื้อ");
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
+      let finalPaymentSlipUrl = paymentSlipUrl;
+
+      if (selectedPaymentMethod === "qr_code" && !finalPaymentSlipUrl && paymentSlipFile) {
+        setIsUploadingSlip(true);
+        finalPaymentSlipUrl = await uploadSlipFile(paymentSlipFile);
+        setPaymentSlipUrl(finalPaymentSlipUrl);
+        setIsUploadingSlip(false);
+      }
+
       const response = await fetch("/api/storefront/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -173,7 +280,8 @@ export default function CheckoutPage() {
             quantity: item.quantity,
             variant: item.variant,
           })),
-          paymentMethod,
+          paymentMethod: selectedPaymentMethod,
+          paymentSlipUrl: selectedPaymentMethod === "qr_code" ? finalPaymentSlipUrl : undefined,
           notes,
           shippingAddress: {
             fullName,
@@ -198,13 +306,35 @@ export default function CheckoutPage() {
         throw new Error(data.error || "สั่งซื้อไม่สำเร็จ");
       }
 
+      if (selectedPaymentMethod === "stripe_promptpay") {
+        const checkoutResponse = await fetch("/api/payments/stripe-checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderId: data.order.id }),
+        });
+        const checkoutData = await checkoutResponse.json();
+
+        if (!checkoutResponse.ok) {
+          throw new Error(checkoutData.error || "ไม่สามารถเริ่มชำระเงินผ่าน Stripe ได้");
+        }
+
+        clearCart();
+        window.location.href = checkoutData.url;
+        return;
+      }
+
       clearCart();
       setOrderResult({
+        id: data.order.id,
         orderNumber: data.order.orderNumber,
         total: data.order.total,
+        paymentMethod: data.order.paymentMethod,
+        paymentReference: data.order.paymentReference,
+        paymentSlipUrl: data.order.paymentSlipUrl,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "สั่งซื้อไม่สำเร็จ");
+      setIsUploadingSlip(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -219,6 +349,26 @@ export default function CheckoutPage() {
             <h1 className="text-2xl font-bold">สั่งซื้อสำเร็จ</h1>
             <p className="mt-2 text-muted-foreground">หมายเลขคำสั่งซื้อ {orderResult.orderNumber}</p>
             <p className="mt-1 font-semibold">{formatCurrency(orderResult.total)}</p>
+            {orderResult.paymentMethod === "qr_code" && (
+              <div className="mt-6 flex flex-col items-center gap-3">
+                <PaymentQrCode
+                  amount={orderResult.total}
+                  reference={orderResult.paymentReference || orderResult.orderNumber}
+                />
+                <p className="text-sm text-muted-foreground">
+                  สแกน QR Code แล้วแจ้งเลขอ้างอิง {orderResult.paymentReference}
+                </p>
+                {orderResult.paymentSlipUrl && (
+                  <Link
+                    href={orderResult.paymentSlipUrl}
+                    target="_blank"
+                    className="text-sm font-medium text-primary hover:underline"
+                  >
+                    ดูสลิปที่อัปโหลด
+                  </Link>
+                )}
+              </div>
+            )}
             <div className="mt-8 flex flex-wrap justify-center gap-3">
               <Button asChild>
                 <Link href="/products">เลือกซื้อสินค้าต่อ</Link>
@@ -391,10 +541,86 @@ export default function CheckoutPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <label className="flex cursor-pointer items-center gap-3 rounded-md border p-4">
-                <input type="radio" name="paymentMethod" value="cod" defaultChecked />
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="cod"
+                  checked={paymentMethod === "cod"}
+                  onChange={() => setPaymentMethod("cod")}
+                />
                 <span>
                   <span className="block font-medium">เก็บเงินปลายทาง</span>
                   <span className="text-sm text-muted-foreground">ชำระเงินเมื่อได้รับสินค้า</span>
+                </span>
+              </label>
+              <label className="flex cursor-pointer items-start gap-3 rounded-md border p-4">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="qr_code"
+                  checked={paymentMethod === "qr_code"}
+                  onChange={() => setPaymentMethod("qr_code")}
+                  className="mt-1"
+                />
+                <span className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <span>
+                    <span className="flex items-center gap-2 font-medium">
+                      <QrCode className="h-4 w-4" />
+                      ชำระด้วย QR Code
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      สแกนเพื่อโอนเงิน ระบบจะบันทึกคำสั่งซื้อเป็นรอตรวจสอบยอดชำระ
+                    </span>
+                  </span>
+                  {paymentMethod === "qr_code" && (
+                    <span className="flex flex-col items-start gap-3">
+                      <PaymentQrCode amount={totals.total} reference="QR-CHECKOUT" />
+                      <span className="w-full space-y-2">
+                        <Label htmlFor="paymentSlip">อัปโหลดสลิปหลังโอน</Label>
+                        <Input
+                          id="paymentSlip"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleSlipFileChange}
+                          required={paymentMethod === "qr_code"}
+                        />
+                        {isUploadingSlip && (
+                          <span className="flex items-center text-xs text-muted-foreground">
+                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                            กำลังอัปโหลดสลิป...
+                          </span>
+                        )}
+                        {paymentSlipUrl && (
+                          <Link
+                            href={paymentSlipUrl}
+                            target="_blank"
+                            className="block text-xs font-medium text-primary hover:underline"
+                          >
+                            ดูสลิปที่อัปโหลดแล้ว
+                          </Link>
+                        )}
+                        {slipUploadError && <span className="block text-xs text-destructive">{slipUploadError}</span>}
+                      </span>
+                    </span>
+                  )}
+                </span>
+              </label>
+              <label className="flex cursor-pointer items-center gap-3 rounded-md border p-4">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="stripe_promptpay"
+                  checked={paymentMethod === "stripe_promptpay"}
+                  onChange={() => setPaymentMethod("stripe_promptpay")}
+                />
+                <span>
+                  <span className="flex items-center gap-2 font-medium">
+                    <QrCode className="h-4 w-4" />
+                    Stripe PromptPay
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    ทดลอง payment gateway จริงผ่าน Stripe Checkout ต้องตั้งค่า STRIPE_SECRET_KEY
+                  </span>
                 </span>
               </label>
               <div className="space-y-2">
@@ -450,7 +676,7 @@ export default function CheckoutPage() {
 
               {error && <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
 
-              <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
+              <Button type="submit" className="w-full" size="lg" disabled={isSubmitting || isUploadingSlip}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 ยืนยันคำสั่งซื้อ
               </Button>

@@ -21,6 +21,9 @@ interface StorefrontOrder {
   total: number;
   status: string;
   paymentStatus: string;
+  paymentMethod?: string;
+  paymentReference?: string;
+  paymentSlipUrl?: string;
   trackingNumber?: string;
   createdAt: string;
   updatedAt: string;
@@ -51,6 +54,15 @@ const statusStyles: Record<string, string> = {
   delivered: "bg-emerald-500/10 text-emerald-700",
   cancelled: "bg-red-500/10 text-red-700",
   refunded: "bg-gray-500/10 text-gray-700",
+};
+
+const paymentMethodLabels: Record<string, string> = {
+  cod: "เก็บเงินปลายทาง",
+  qr_code: "QR Code",
+  stripe_promptpay: "Stripe PromptPay",
+  credit_card: "บัตรเครดิต",
+  paypal: "PayPal",
+  stripe: "Stripe",
 };
 
 function formatDate(value: string) {
@@ -592,6 +604,22 @@ export default function ProfilePage() {
                             <div>
                               <p className="text-muted-foreground">การชำระเงิน</p>
                               <p className="font-medium">{order.paymentStatus === "paid" ? "ชำระแล้ว" : "รอชำระ/ตรวจสอบ"}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {paymentMethodLabels[order.paymentMethod || ""] || order.paymentMethod || "-"}
+                              </p>
+                              {order.paymentReference && (
+                                <p className="font-mono text-xs text-muted-foreground">{order.paymentReference}</p>
+                              )}
+                              {order.paymentSlipUrl && (
+                                <a
+                                  href={order.paymentSlipUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-xs font-medium text-primary hover:underline"
+                                >
+                                  ดูสลิป
+                                </a>
+                              )}
                             </div>
                             <div>
                               <p className="text-muted-foreground">เลขพัสดุ</p>

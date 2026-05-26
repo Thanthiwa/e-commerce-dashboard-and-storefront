@@ -280,13 +280,20 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json();
     const orderId = String(body.id || "");
     const status = String(body.status || "");
+    const hasTrackingNumber = Object.prototype.hasOwnProperty.call(body, "trackingNumber");
     const trackingNumber = typeof body.trackingNumber === "string" ? body.trackingNumber.trim() : "";
+    const hasPaymentSlipUrl = Object.prototype.hasOwnProperty.call(body, "paymentSlipUrl");
+    const paymentSlipUrl = typeof body.paymentSlipUrl === "string" ? body.paymentSlipUrl.trim() : "";
 
     if (!orderId) {
       return NextResponse.json({ error: "Order id is required" }, { status: 400 });
     }
 
-    if (!orderStatuses.includes(status)) {
+    if (!status && !trackingNumber && !paymentSlipUrl) {
+      return NextResponse.json({ error: "Order status, tracking number, or payment slip is required" }, { status: 400 });
+    }
+
+    if (status && !orderStatuses.includes(status)) {
       return NextResponse.json({ error: "Invalid order status" }, { status: 400 });
     }
 
@@ -294,7 +301,21 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Tracking number is required when marking an order as shipped" }, { status: 400 });
     }
 
-    const update: Record<string, unknown> = { status };
+    const update: Record<string, unknown> = {
+      updatedAt: new Date(),
+    };
+
+    if (status) {
+      update.status = status;
+    }
+
+    if (hasTrackingNumber && trackingNumber) {
+      update.trackingNumber = trackingNumber;
+    }
+
+    if (hasPaymentSlipUrl && paymentSlipUrl) {
+      update.paymentSlipUrl = paymentSlipUrl;
+    }
 
     if (status === "shipped") {
       update.trackingNumber = trackingNumber;

@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Headphones, RotateCcw, Shield, Truck } from "lucide-react";
+import { ArrowRight, Gift, Headphones, Percent, RotateCcw, Shield, ShoppingBag, Truck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,6 +8,8 @@ import { ProductCard } from "@/components/store/product-card";
 import { connectDB } from "@/lib/db/connect";
 import Product from "@/lib/db/models/Product";
 import Category from "@/lib/db/models/Category";
+import Order from "@/lib/db/models/Order";
+import { formatCurrency } from "@/lib/utils/format";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +22,54 @@ const features = [
   { icon: Headphones, title: "ช่วยเหลือ 24/7", description: "ทีมงานพร้อมดูแลทุกวัน" },
 ];
 
+type HomeProduct = {
+  id: string;
+  name: string;
+  slug: string;
+  price: number;
+  compareAtPrice?: number;
+  image: string;
+  stock: number;
+  category: string;
+  badge?: string;
+};
+
+type BundlePromotion = {
+  id: string;
+  title: string;
+  code: string;
+  discountPercent: number;
+  products: HomeProduct[];
+  bundleValue: number;
+  frequency: number;
+};
+
+function toHomeProduct(product: any): HomeProduct {
+  return {
+    id: String(product._id),
+    name: product.name,
+    slug: product.slug,
+    price: product.price,
+    compareAtPrice: product.compareAtPrice,
+    image: product.images?.[0] || productImageFallback,
+    stock: product.quantity ?? 0,
+    category:
+      typeof product.category === "object" && product.category && "name" in product.category
+        ? String(product.category.name)
+        : "ไม่ระบุหมวดหมู่",
+    badge: product.compareAtPrice && product.compareAtPrice > product.price ? "ลดราคา" : undefined,
+  };
+}
+
+function buildPromotionCode(products: HomeProduct[], index: number) {
+  const base = products
+    .map((product) => product.name.replace(/[^A-Za-z0-9]/g, "").slice(0, 4).toUpperCase())
+    .filter(Boolean)
+    .join("");
+
+  return `BUNDLE${base || index + 1}`;
+}
+
 async function getHomeData() {
   await connectDB();
 
@@ -29,10 +79,60 @@ async function getHomeData() {
     .limit(4)
     .lean();
 
-  const categories = await Category.find({ status: "active" })
-    .sort({ name: 1 })
-    .limit(4)
+  const completedOrders = await Order.find({
+    status: { $nin: ["cancelled", "refunded"] },
+    "items.1": { $exists: true },
+  })
+    .select("items.product")
     .lean();
+
+  const pairCounts = new Map<string, number>();
+  completedOrders.forEach((order) => {
+    const productIds = [...new Set(order.items.map((item) => String(item.product)).filter(Boolean))].sort();
+
+    for (let i = 0; i < productIds.length; i += 1) {
+      for (let j = i + 1; j < productIds.length; j += 1) {
+        const key = `${productIds[i]}|${productIds[j]}`;
+        pairCounts.set(key, (pairCounts.get(key) || 0) + 1);
+      }
+    }
+  });
+
+  const topPairs = Array.from(pairCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3);
+
+  const bundleProductIds = [...new Set(topPairs.flatMap(([pair]) => pair.split("|")))];
+  const bundleProducts = await Product.find({ _id: { $in: bundleProductIds }, status: "active" })
+    .populate("category", "name slug")
+    .lean();
+  const bundleProductById = new Map(bundleProducts.map((product) => [String(product._id), toHomeProduct(product)]));
+
+  const bundlePromotions = topPairs
+    .map(([pair, frequency], index) => {
+      const pairProducts = pair
+        .split("|")
+        .map((id) => bundleProductById.get(id))
+        .filter((product): product is HomeProduct => Boolean(product));
+
+      if (pairProducts.length < 2) return null;
+
+      const discountPercent = frequency >= 10 ? 15 : frequency >= 5 ? 10 : 5;
+      const bundleValue = pairProducts.reduce((sum, product) => sum + product.price, 0);
+
+      return {
+        id: pair,
+        title: `Bundle ${pairProducts.map((product) => product.name).join(" + ")}`,
+        code: buildPromotionCode(pairProducts, index),
+        discountPercent,
+        products: pairProducts,
+        bundleValue,
+        frequency,
+      };
+    })
+    .filter((promotion): promotion is BundlePromotion => Boolean(promotion));
+
+  const categories = await Category.find({ status: "active" }).sort({ name: 1 }).limit(4).lean();
 
   const categoryIds = categories.map((category) => category._id);
   const categorySummaries = await Product.aggregate([
@@ -57,23 +157,8 @@ async function getHomeData() {
   );
 
   return {
-    featuredProducts: products.map((product) => ({
-      id: String(product._id),
-      name: product.name,
-      slug: product.slug,
-      price: product.price,
-      compareAtPrice: product.compareAtPrice,
-      image: product.images?.[0] || productImageFallback,
-      stock: product.quantity ?? 0,
-      category:
-        typeof product.category === "object" && product.category && "name" in product.category
-          ? String(product.category.name)
-          : "ไม่ระบุหมวดหมู่",
-      badge:
-        product.compareAtPrice && product.compareAtPrice > product.price
-          ? "ลดราคา"
-          : undefined,
-    })),
+    featuredProducts: products.map(toHomeProduct),
+    bundlePromotions,
     categories: categories.map((category) => {
       const summary = summaryByCategory.get(String(category._id));
 
@@ -88,7 +173,7 @@ async function getHomeData() {
 }
 
 export default async function HomePage() {
-  const { featuredProducts, categories } = await getHomeData();
+  const { featuredProducts, categories, bundlePromotions } = await getHomeData();
 
   return (
     <div>
@@ -157,12 +242,85 @@ export default async function HomePage() {
           </div>
         ) : (
           <Card>
-            <CardContent className="py-12 text-center text-muted-foreground">
-              ยังไม่มีสินค้าที่เปิดขาย
-            </CardContent>
+            <CardContent className="py-12 text-center text-muted-foreground">ยังไม่มีสินค้าที่เปิดขาย</CardContent>
           </Card>
         )}
       </section>
+
+      {bundlePromotions.length > 0 && (
+        <section className="container mx-auto px-4 pb-16">
+          <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <Badge variant="secondary" className="mb-3 gap-2">
+                <Gift className="h-3.5 w-3.5" />
+                Bundle Promotions
+              </Badge>
+              <h2 className="text-2xl font-bold">โปรโมชั่นจากสินค้าที่ลูกค้ามักซื้อคู่กัน</h2>
+              <p className="text-muted-foreground">จัดชุดโปรจากข้อมูลการซื้อจริง ช่วยให้เลือกสินค้าที่เข้ากันได้ง่ายขึ้น</p>
+            </div>
+            <Button variant="outline" asChild>
+              <Link href="/products">
+                ดูสินค้าเพิ่ม
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-3">
+            {bundlePromotions.map((promotion) => (
+              <Card key={promotion.id} className="overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="grid grid-cols-2 gap-px bg-border">
+                    {promotion.products.map((product) => (
+                      <Link key={product.id} href={`/products/${product.slug}`} className="group bg-muted">
+                        <div className="relative aspect-square overflow-hidden">
+                          <Image
+                            src={product.image}
+                            alt={product.name}
+                            fill
+                            className="object-cover transition-transform group-hover:scale-105"
+                          />
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+
+                  <div className="space-y-4 p-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="line-clamp-2 font-semibold">{promotion.title}</h3>
+                        <p className="mt-1 text-sm text-muted-foreground">พบการซื้อร่วมกัน {promotion.frequency} ครั้ง</p>
+                      </div>
+                      <Badge className="shrink-0 bg-red-500 text-white">
+                        <Percent className="mr-1 h-3 w-3" />
+                        -{promotion.discountPercent}%
+                      </Badge>
+                    </div>
+
+                    <div className="rounded-md border bg-muted/40 p-3">
+                      <div className="flex items-center justify-between gap-3 text-sm">
+                        <span className="text-muted-foreground">โค้ดโปร</span>
+                        <span className="font-mono font-semibold">{promotion.code}</span>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between gap-3 text-sm">
+                        <span className="text-muted-foreground">มูลค่าชุด</span>
+                        <span className="font-semibold">{formatCurrency(promotion.bundleValue)}</span>
+                      </div>
+                    </div>
+
+                    <Button className="w-full" asChild>
+                      <Link href={`/products/${promotion.products[0].slug}`}>
+                        <ShoppingBag className="mr-2 h-4 w-4" />
+                        เลือกซื้อชุดนี้
+                      </Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="bg-muted/30">
         <div className="container mx-auto px-4 py-16">
@@ -197,9 +355,7 @@ export default async function HomePage() {
             </div>
           ) : (
             <Card>
-              <CardContent className="py-12 text-center text-muted-foreground">
-                ยังไม่มีหมวดหมู่ที่เปิดใช้งาน
-              </CardContent>
+              <CardContent className="py-12 text-center text-muted-foreground">ยังไม่มีหมวดหมู่ที่เปิดใช้งาน</CardContent>
             </Card>
           )}
         </div>
@@ -210,9 +366,7 @@ export default async function HomePage() {
           <CardContent className="flex flex-col items-center justify-between gap-6 p-8 lg:flex-row lg:p-12">
             <div>
               <h2 className="mb-2 text-2xl font-bold">สมัครรับข่าวสารจากเรา</h2>
-              <p className="text-primary-foreground/80">
-                รับอัปเดตสินค้าใหม่และโปรโมชันก่อนใคร
-              </p>
+              <p className="text-primary-foreground/80">รับอัปเดตสินค้าใหม่และโปรโมชันก่อนใคร</p>
             </div>
             <div className="flex w-full gap-2 lg:w-auto">
               <input

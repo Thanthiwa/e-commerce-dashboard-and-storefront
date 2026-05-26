@@ -75,9 +75,15 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const items: CheckoutItem[] = Array.isArray(body.items) ? body.items : [];
+    const paymentMethod = String(body.paymentMethod || "cod");
+    const paymentSlipUrl = typeof body.paymentSlipUrl === "string" ? body.paymentSlipUrl.trim() : "";
 
     if (items.length === 0) {
       return NextResponse.json({ error: "ตะกร้าสินค้าว่าง" }, { status: 400 });
+    }
+
+    if (paymentMethod === "qr_code" && !paymentSlipUrl) {
+      return NextResponse.json({ error: "กรุณาอัปโหลดสลิปโอนเงินก่อนยืนยันคำสั่งซื้อ" }, { status: 400 });
     }
 
     const productIds = items.map((item: CheckoutItem) => item.id).filter((id: string) => mongoose.isValidObjectId(id));
@@ -116,6 +122,7 @@ export async function POST(request: NextRequest) {
     const discount = 0;
     const total = subtotal + shipping + tax - discount;
     const orderNumber = await (Order as unknown as { generateOrderNumber: () => Promise<string> }).generateOrderNumber();
+    const paymentReference = paymentMethod === "qr_code" ? `QR-${orderNumber}` : undefined;
 
     const order = new Order({
       orderNumber,
@@ -127,8 +134,11 @@ export async function POST(request: NextRequest) {
       discount,
       total,
       status: "pending",
-      paymentStatus: body.paymentMethod === "cod" ? "pending" : "paid",
-      paymentMethod: body.paymentMethod || "cod",
+      paymentStatus: paymentMethod === "credit_card" ? "paid" : "pending",
+      paymentMethod,
+      paymentReference,
+      paymentSlipUrl: paymentMethod === "qr_code" ? paymentSlipUrl : undefined,
+      gatewayProvider: paymentMethod === "stripe_promptpay" ? "stripe" : undefined,
       shippingAddress: body.shippingAddress,
       billingAddress: body.billingAddress || body.shippingAddress,
       notes: body.notes,
@@ -165,6 +175,9 @@ export async function POST(request: NextRequest) {
           total: order.total,
           status: order.status,
           paymentStatus: order.paymentStatus,
+          paymentMethod: order.paymentMethod,
+          paymentReference: order.paymentReference,
+          paymentSlipUrl: order.paymentSlipUrl,
         },
       },
       { status: 201 }

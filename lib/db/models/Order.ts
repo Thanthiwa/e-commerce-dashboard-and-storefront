@@ -36,6 +36,10 @@ export interface IOrder extends Document {
   status: OrderStatus;
   paymentStatus: PaymentStatus;
   paymentMethod?: string;
+  paymentReference?: string;
+  paymentSlipUrl?: string;
+  gatewayProvider?: string;
+  gatewaySessionId?: string;
   trackingNumber?: string;
   shippingAddress: IShippingAddress;
   billingAddress?: IShippingAddress;
@@ -152,6 +156,22 @@ const OrderSchema = new Schema<IOrder>(
     paymentMethod: {
       type: String,
     },
+    paymentReference: {
+      type: String,
+      trim: true,
+    },
+    paymentSlipUrl: {
+      type: String,
+      trim: true,
+    },
+    gatewayProvider: {
+      type: String,
+      trim: true,
+    },
+    gatewaySessionId: {
+      type: String,
+      trim: true,
+    },
     trackingNumber: {
       type: String,
       trim: true,
@@ -242,6 +262,12 @@ OrderSchema.methods.updateStatus = function (newStatus: OrderStatus) {
     this.paymentStatus = newStatus === "refunded" ? "refunded" : this.paymentStatus;
   }
 };
+
+const existingOrderModel = mongoose.models.Order as Model<IOrder> | undefined;
+
+if (existingOrderModel && !existingOrderModel.schema.path("paymentSlipUrl")) {
+  delete mongoose.models.Order;
+}
 
 const Order: Model<IOrder> = mongoose.models.Order || mongoose.model<IOrder>("Order", OrderSchema);
 

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Package, FolderTree, ShoppingCart, Users, LogOut, Settings, Store } from "lucide-react";
+import { BarChart3, LayoutDashboard, Package, FolderTree, ShoppingCart, Users, LogOut, Settings, Store } from "lucide-react";
 
 const mainNavItems = [
   {
@@ -25,6 +25,11 @@ const mainNavItems = [
     title: "คำสั่งซื้อ",
     href: "/admin/orders",
     icon: ShoppingCart,
+  },
+  {
+    title: "Data Mining",
+    href: "/admin/data-mining",
+    icon: BarChart3,
   },
   {
     title: "ลูกค้า",

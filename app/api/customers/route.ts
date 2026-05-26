@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/connect";
 import Customer from "@/lib/db/models/Customer";
+import Order from "@/lib/db/models/Order";
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,10 +22,40 @@ export async function GET(request: NextRequest) {
       query.$or = [{ email: { $regex: search, $options: "i" } }, { firstName: { $regex: search, $options: "i" } }, { lastName: { $regex: search, $options: "i" } }];
     }
 
-    // Execute query with pagination
     const skip = (page - 1) * limit;
 
-    const [customers, total] = await Promise.all([Customer.find(query).sort({ totalSpent: -1 }).skip(skip).limit(limit).lean(), Customer.countDocuments(query)]);
+    const [customers, total] = await Promise.all([
+      Customer.aggregate([
+        { $match: query },
+        {
+          $lookup: {
+            from: Order.collection.name,
+            localField: "_id",
+            foreignField: "customer",
+            as: "orders",
+          },
+        },
+        {
+          $addFields: {
+            totalOrders: { $size: "$orders" },
+            totalSpent: { $sum: "$orders.total" },
+            lastOrderDate: { $max: "$orders.createdAt" },
+          },
+        },
+        {
+          $addFields: {
+            averageOrderValue: {
+              $cond: [{ $gt: ["$totalOrders", 0] }, { $divide: ["$totalSpent", "$totalOrders"] }, 0],
+            },
+          },
+        },
+        { $project: { passwordHash: 0, orders: 0 } },
+        { $sort: { totalSpent: -1, createdAt: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+      ]),
+      Customer.countDocuments(query),
+    ]);
 
     return NextResponse.json({
       customers,
