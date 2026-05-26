@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
@@ -5,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart } from "lucide-react";
 import { formatCurrency } from "@/lib/utils/format";
+import { useCart } from "@/lib/store/cart-context";
 
 interface Product {
   id: string;
@@ -18,6 +21,7 @@ interface Product {
 }
 
 export function ProductCard({ product }: { product: Product }) {
+  const { addItem } = useCart();
   const discount = product.compareAtPrice ? Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100) : 0;
   const badgeLabel = product.badge === "Sale" || product.badge === "ลดราคา" ? "ลดราคา" : product.badge === "New" || product.badge === "ใหม่" ? "ใหม่" : product.badge;
 
@@ -44,7 +48,21 @@ export function ProductCard({ product }: { product: Product }) {
             <span className="font-bold">{formatCurrency(product.price)}</span>
             {product.compareAtPrice && <span className="text-sm text-muted-foreground line-through">{formatCurrency(product.compareAtPrice)}</span>}
           </div>
-          <Button size="icon" variant="outline" className="h-8 w-8">
+          <Button
+            type="button"
+            size="icon"
+            variant="outline"
+            className="h-8 w-8"
+            onClick={() =>
+              addItem({
+                id: product.id,
+                slug: product.slug,
+                name: product.name,
+                price: product.price,
+                image: product.image,
+              })
+            }
+          >
             <ShoppingCart className="h-4 w-4" />
             <span className="sr-only">เพิ่มลงตะกร้า</span>
           </Button>

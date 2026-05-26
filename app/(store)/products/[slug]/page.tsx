@@ -12,11 +12,13 @@ import { formatCurrency } from "@/lib/utils/format";
 import { ShoppingCart, Heart, Share2, Truck, RotateCcw, Shield, Minus, Plus, Star, ChevronRight } from "lucide-react";
 import { ProductCard } from "@/components/store/product-card";
 import { useParams } from "next/navigation";
+import { useCart } from "@/lib/store/cart-context";
 
 const placeholderImage = "/placeholder.svg?height=600&width=600";
 
 export default function ProductDetailPage() {
   const params = useParams();
+  const { addItem } = useCart();
   const slug = params.slug as string;
   const [product, setProduct] = useState<any>(null);
   const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
@@ -114,6 +116,9 @@ export default function ProductDetailPage() {
   }
 
   const discount = product.compareAtPrice ? Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100) : 0;
+  const selectedVariantLabel = Object.entries(selectedVariants)
+    .map(([name, value]) => `${name}: ${value}`)
+    .join(" / ");
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -212,7 +217,24 @@ export default function ProductDetailPage() {
           </div>
 
           <div className="flex gap-3">
-            <Button size="lg" className="flex-1">
+            <Button
+              size="lg"
+              className="flex-1"
+              disabled={product.stock <= 0}
+              onClick={() =>
+                addItem(
+                  {
+                    id: product._id,
+                    slug: product.slug,
+                    name: product.name,
+                    price: product.price,
+                    image: product.images[0],
+                    variant: selectedVariantLabel || undefined,
+                  },
+                  quantity
+                )
+              }
+            >
               <ShoppingCart className="mr-2 h-5 w-5" />
               เพิ่มในตะกร้า
             </Button>
@@ -222,21 +244,6 @@ export default function ProductDetailPage() {
             <Button size="lg" variant="outline">
               <Share2 className="h-5 w-5" />
             </Button>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4 pt-6 border-t">
-            <div className="flex items-center gap-2 text-sm">
-              <Truck className="h-5 w-5 text-muted-foreground" />
-              <span>จัดส่งฟรี</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <RotateCcw className="h-5 w-5 text-muted-foreground" />
-              <span>คืนสินค้าได้ภายใน 30 วัน</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <Shield className="h-5 w-5 text-muted-foreground" />
-              <span>รับประกัน 2 ปี</span>
-            </div>
           </div>
         </div>
       </div>

@@ -1,45 +1,28 @@
 "use client";
 
-import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { ArrowRight, Minus, Plus, ShoppingBag, Tag, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Trash2, Minus, Plus, ShoppingBag, ArrowRight, Tag } from "lucide-react";
+import { useCart } from "@/lib/store/cart-context";
 import { formatCurrency } from "@/lib/utils/format";
 
-const initialCartItems = [
-  { id: "1", name: "หูฟังบลูทูธไร้สาย", slug: "wireless-bluetooth-headphones", price: 99.99, image: "/placeholder.svg?height=100&width=100", quantity: 1, variant: "สีดำ" },
-  { id: "2", name: "สมาร์ตวอทช์ฟิตเนส", slug: "smart-fitness-watch", price: 199.99, image: "/placeholder.svg?height=100&width=100", quantity: 2, variant: "สีเงิน" },
-  { id: "3", name: "เสื้อยืดคอตตอนพรีเมียม", slug: "premium-cotton-tshirt", price: 29.99, image: "/placeholder.svg?height=100&width=100", quantity: 1, variant: "สีขาว / M" },
-];
-
 export default function CartPage() {
-  const [cartItems, setCartItems] = useState(initialCartItems);
-  const [promoCode, setPromoCode] = useState("");
+  const { items, removeItem, updateQuantity, clearCart, totalPrice } = useCart();
+  const shipping = totalPrice > 50 || totalPrice === 0 ? 0 : 9.99;
+  const tax = totalPrice * 0.08;
+  const total = totalPrice + shipping + tax;
 
-  const updateQuantity = (id: string, delta: number) => {
-    setCartItems(cartItems.map((item) => (item.id === id ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item)));
-  };
-
-  const removeItem = (id: string) => {
-    setCartItems(cartItems.filter((item) => item.id !== id));
-  };
-
-  const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const shipping = subtotal > 50 ? 0 : 9.99;
-  const tax = subtotal * 0.08;
-  const total = subtotal + shipping + tax;
-
-  if (cartItems.length === 0) {
+  if (items.length === 0) {
     return (
       <div className="container mx-auto px-4 py-16">
         <Card className="mx-auto max-w-lg">
-          <CardContent className="flex flex-col items-center justify-center py-16">
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <ShoppingBag className="mb-4 h-16 w-16 text-muted-foreground" />
-            <h2 className="mb-2 text-xl font-semibold">ตะกร้าของคุณยังว่างอยู่</h2>
+            <h1 className="mb-2 text-xl font-semibold">ตะกร้าของคุณยังว่างอยู่</h1>
             <p className="mb-6 text-muted-foreground">เพิ่มสินค้าลงในตะกร้าเพื่อเริ่มสั่งซื้อ</p>
             <Button asChild>
               <Link href="/products">
@@ -59,7 +42,7 @@ export default function CartPage() {
 
       <div className="grid gap-8 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
-          {cartItems.map((item) => (
+          {items.map((item) => (
             <Card key={item.id}>
               <CardContent className="p-4">
                 <div className="flex gap-4">
@@ -71,20 +54,39 @@ export default function CartPage() {
                     <Link href={`/products/${item.slug}`} className="font-medium transition-colors hover:text-primary">
                       {item.name}
                     </Link>
-                    <p className="mt-1 text-sm text-muted-foreground">{item.variant}</p>
+                    {item.variant && <p className="mt-1 text-sm text-muted-foreground">{item.variant}</p>}
                     <div className="mt-2 flex items-center justify-between gap-4">
                       <p className="font-semibold">{formatCurrency(item.price)}</p>
-                      <Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={() => removeItem(item.id)}>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive"
+                        onClick={() => removeItem(item.id)}
+                      >
                         <Trash2 className="h-4 w-4" />
                         <span className="sr-only">ลบสินค้า</span>
                       </Button>
                     </div>
                     <div className="mt-4 flex items-center gap-2">
-                      <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => updateQuantity(item.id, -1)} disabled={item.quantity <= 1}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        disabled={item.quantity <= 1}
+                      >
                         <Minus className="h-3 w-3" />
                       </Button>
                       <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
-                      <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => updateQuantity(item.id, 1)}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                      >
                         <Plus className="h-3 w-3" />
                       </Button>
                     </div>
@@ -94,11 +96,11 @@ export default function CartPage() {
             </Card>
           ))}
 
-          <div className="flex items-center justify-between pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-4">
             <Button variant="outline" asChild>
               <Link href="/products">เลือกซื้อสินค้าต่อ</Link>
             </Button>
-            <Button variant="ghost" className="text-destructive" onClick={() => setCartItems([])}>
+            <Button variant="ghost" className="text-destructive" onClick={clearCart}>
               ล้างตะกร้า
             </Button>
           </div>
@@ -111,8 +113,8 @@ export default function CartPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-2">
-                <Input placeholder="โค้ดส่วนลด" value={promoCode} onChange={(e) => setPromoCode(e.target.value)} />
-                <Button variant="secondary">
+                <Input placeholder="โค้ดส่วนลด" disabled />
+                <Button variant="secondary" disabled>
                   <Tag className="h-4 w-4" />
                   <span className="sr-only">ใช้โค้ดส่วนลด</span>
                 </Button>
@@ -122,8 +124,8 @@ export default function CartPage() {
 
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">ยอดรวมก่อนส่วนลด</span>
-                  <span>{formatCurrency(subtotal)}</span>
+                  <span className="text-muted-foreground">ยอดรวมสินค้า</span>
+                  <span>{formatCurrency(totalPrice)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">ค่าจัดส่ง</span>
@@ -145,7 +147,7 @@ export default function CartPage() {
             <CardFooter>
               <Button className="w-full" size="lg" asChild>
                 <Link href="/checkout">
-                  ดำเนินการชำระเงิน
+                  ดำเนินการสั่งซื้อ
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>

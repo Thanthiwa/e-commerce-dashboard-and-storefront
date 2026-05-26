@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -98,6 +99,7 @@ function FilterSidebar({
 }
 
 export default function ProductsPage() {
+  const searchParams = useSearchParams();
   const [products, setProducts] = useState<StoreProduct[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -156,6 +158,22 @@ export default function ProductsPage() {
     fetchProducts();
     fetchCategories();
   }, []);
+
+  useEffect(() => {
+    const categoryParam = searchParams.get("category");
+
+    if (!categoryParam || categories.length === 0) {
+      return;
+    }
+
+    const matchedCategory = categories.find(
+      (category) => category.slug === categoryParam || category._id === categoryParam
+    );
+
+    if (matchedCategory) {
+      setSelectedCategories([matchedCategory._id]);
+    }
+  }, [categories, searchParams]);
 
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {

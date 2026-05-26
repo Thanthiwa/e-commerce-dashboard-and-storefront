@@ -1,23 +1,17 @@
+import Image from "next/image";
 import Link from "next/link";
+import { ArrowRight, Headphones, RotateCcw, Shield, Truck } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Truck, Shield, RotateCcw, Headphones } from "lucide-react";
 import { ProductCard } from "@/components/store/product-card";
+import { connectDB } from "@/lib/db/connect";
+import Product from "@/lib/db/models/Product";
+import Category from "@/lib/db/models/Category";
 
-const featuredProducts = [
-  { id: "1", name: "หูฟังบลูทูธไร้สาย", slug: "wireless-bluetooth-headphones", price: 99.99, compareAtPrice: 129.99, image: "/placeholder.svg?height=300&width=300", category: "อิเล็กทรอนิกส์", badge: "ลดราคา" },
-  { id: "2", name: "สมาร์ตวอทช์ฟิตเนส", slug: "smart-fitness-watch", price: 199.99, image: "/placeholder.svg?height=300&width=300", category: "อิเล็กทรอนิกส์", badge: "ใหม่" },
-  { id: "3", name: "เสื้อยืดคอตตอนพรีเมียม", slug: "premium-cotton-tshirt", price: 29.99, image: "/placeholder.svg?height=300&width=300", category: "เสื้อผ้า" },
-  { id: "4", name: "รองเท้าวิ่งโปร", slug: "running-sneakers-pro", price: 129.99, compareAtPrice: 149.99, image: "/placeholder.svg?height=300&width=300", category: "กีฬา", badge: "ลดราคา" },
-];
+export const dynamic = "force-dynamic";
 
-const categories = [
-  { name: "อิเล็กทรอนิกส์", slug: "electronics", image: "/placeholder.svg?height=200&width=300", count: 45 },
-  { name: "เสื้อผ้า", slug: "clothing", image: "/placeholder.svg?height=200&width=300", count: 120 },
-  { name: "บ้านและสวน", slug: "home-garden", image: "/placeholder.svg?height=200&width=300", count: 67 },
-  { name: "กีฬา", slug: "sports", image: "/placeholder.svg?height=200&width=300", count: 34 },
-];
+const productImageFallback = "/placeholder.svg?height=300&width=300";
 
 const features = [
   { icon: Truck, title: "จัดส่งฟรี", description: "เมื่อสั่งซื้อเกิน ฿50" },
@@ -26,15 +20,87 @@ const features = [
   { icon: Headphones, title: "ช่วยเหลือ 24/7", description: "ทีมงานพร้อมดูแลทุกวัน" },
 ];
 
-export default function HomePage() {
+async function getHomeData() {
+  await connectDB();
+
+  const products = await Product.find({ status: "active" })
+    .populate("category", "name slug")
+    .sort({ "metadata.purchases": -1, createdAt: -1 })
+    .limit(4)
+    .lean();
+
+  const categories = await Category.find({ status: "active" })
+    .sort({ name: 1 })
+    .limit(4)
+    .lean();
+
+  const categoryIds = categories.map((category) => category._id);
+  const categorySummaries = await Product.aggregate([
+    { $match: { status: "active", category: { $in: categoryIds } } },
+    {
+      $group: {
+        _id: "$category",
+        count: { $sum: 1 },
+        image: { $first: { $first: "$images" } },
+      },
+    },
+  ]);
+
+  const summaryByCategory = new Map(
+    categorySummaries.map((summary) => [
+      String(summary._id),
+      {
+        count: Number(summary.count || 0),
+        image: typeof summary.image === "string" ? summary.image : undefined,
+      },
+    ])
+  );
+
+  return {
+    featuredProducts: products.map((product) => ({
+      id: String(product._id),
+      name: product.name,
+      slug: product.slug,
+      price: product.price,
+      compareAtPrice: product.compareAtPrice,
+      image: product.images?.[0] || productImageFallback,
+      category:
+        typeof product.category === "object" && product.category && "name" in product.category
+          ? String(product.category.name)
+          : "ไม่ระบุหมวดหมู่",
+      badge:
+        product.compareAtPrice && product.compareAtPrice > product.price
+          ? "ลดราคา"
+          : undefined,
+    })),
+    categories: categories.map((category) => {
+      const summary = summaryByCategory.get(String(category._id));
+
+      return {
+        name: category.name,
+        slug: category.slug,
+        image: category.image || summary?.image,
+        count: summary?.count || 0,
+      };
+    }),
+  };
+}
+
+export default async function HomePage() {
+  const { featuredProducts, categories } = await getHomeData();
+
   return (
     <div>
       <section className="relative bg-gradient-to-br from-primary/5 via-background to-primary/10">
         <div className="container mx-auto px-4 py-20 lg:py-32">
           <div className="max-w-2xl">
             <Badge className="mb-4">คอลเลกชันใหม่พร้อมให้เลือกแล้ว</Badge>
-            <h1 className="mb-6 text-balance text-4xl font-bold tracking-tight lg:text-6xl">ค้นพบสินค้าคุณภาพสำหรับทุกความต้องการ</h1>
-            <p className="mb-8 text-pretty text-lg text-muted-foreground">ช้อปเทรนด์ล่าสุดอย่างมั่นใจ ด้วยสินค้าคุณภาพ ราคาคุ้มค่า และบริการที่ใส่ใจ</p>
+            <h1 className="mb-6 text-balance text-4xl font-bold tracking-tight lg:text-6xl">
+              ค้นพบสินค้าคุณภาพสำหรับทุกความต้องการ
+            </h1>
+            <p className="mb-8 text-pretty text-lg text-muted-foreground">
+              ช้อปเทรนด์ล่าสุดอย่างมั่นใจ ด้วยสินค้าคุณภาพ ราคาคุ้มค่า และบริการที่ใส่ใจ
+            </p>
             <div className="flex flex-wrap gap-4">
               <Button size="lg" asChild>
                 <Link href="/products">
@@ -43,7 +109,7 @@ export default function HomePage() {
                 </Link>
               </Button>
               <Button size="lg" variant="outline" asChild>
-                <Link href="/products?sale=true">ดูสินค้าลดราคา</Link>
+                <Link href="/products">ดูสินค้าทั้งหมด</Link>
               </Button>
             </div>
           </div>
@@ -69,10 +135,10 @@ export default function HomePage() {
       </section>
 
       <section className="container mx-auto px-4 py-16">
-        <div className="mb-8 flex items-center justify-between">
+        <div className="mb-8 flex items-center justify-between gap-4">
           <div>
             <h2 className="text-2xl font-bold">สินค้าแนะนำ</h2>
-            <p className="text-muted-foreground">คัดสรรรายการเด่นมาให้คุณ</p>
+            <p className="text-muted-foreground">คัดสรรรายการเด่นจากข้อมูลสินค้าในระบบ</p>
           </div>
           <Button variant="outline" asChild>
             <Link href="/products">
@@ -81,34 +147,60 @@ export default function HomePage() {
             </Link>
           </Button>
         </div>
-        <div className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4">
-          {featuredProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
+
+        {featuredProducts.length > 0 ? (
+          <div className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4">
+            {featuredProducts.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        ) : (
+          <Card>
+            <CardContent className="py-12 text-center text-muted-foreground">
+              ยังไม่มีสินค้าที่เปิดขาย
+            </CardContent>
+          </Card>
+        )}
       </section>
 
       <section className="bg-muted/30">
         <div className="container mx-auto px-4 py-16">
           <div className="mb-8 text-center">
             <h2 className="text-2xl font-bold">เลือกซื้อตามหมวดหมู่</h2>
-            <p className="text-muted-foreground">สำรวจหมวดหมู่สินค้าหลากหลายของเรา</p>
+            <p className="text-muted-foreground">สำรวจหมวดหมู่สินค้าจากฐานข้อมูลจริง</p>
           </div>
-          <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
-            {categories.map((category) => (
-              <Link key={category.slug} href={`/products?category=${category.slug}`} className="group">
-                <Card className="overflow-hidden transition-all hover:shadow-lg">
-                  <div className="relative aspect-[3/2] bg-muted">
-                    <div className="absolute inset-0 z-10 bg-gradient-to-t from-background/80 to-transparent" />
-                    <div className="absolute bottom-4 left-4 z-20">
-                      <h3 className="text-lg font-semibold">{category.name}</h3>
-                      <p className="text-sm text-muted-foreground">{category.count} รายการ</p>
+
+          {categories.length > 0 ? (
+            <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
+              {categories.map((category) => (
+                <Link key={category.slug} href={`/products?category=${category.slug}`} className="group">
+                  <Card className="overflow-hidden transition-all hover:shadow-lg">
+                    <div className="relative aspect-[3/2] bg-muted">
+                      {category.image && (
+                        <Image
+                          src={category.image}
+                          alt={category.name}
+                          fill
+                          className="object-cover transition-transform group-hover:scale-105"
+                        />
+                      )}
+                      <div className="absolute inset-0 z-10 bg-gradient-to-t from-background/90 to-background/10" />
+                      <div className="absolute bottom-4 left-4 z-20">
+                        <h3 className="text-lg font-semibold">{category.name}</h3>
+                        <p className="text-sm text-muted-foreground">{category.count} รายการ</p>
+                      </div>
                     </div>
-                  </div>
-                </Card>
-              </Link>
-            ))}
-          </div>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="py-12 text-center text-muted-foreground">
+                ยังไม่มีหมวดหมู่ที่เปิดใช้งาน
+              </CardContent>
+            </Card>
+          )}
         </div>
       </section>
 
@@ -117,10 +209,16 @@ export default function HomePage() {
           <CardContent className="flex flex-col items-center justify-between gap-6 p-8 lg:flex-row lg:p-12">
             <div>
               <h2 className="mb-2 text-2xl font-bold">สมัครรับข่าวสารจากเรา</h2>
-              <p className="text-primary-foreground/80">รับอัปเดตสินค้าใหม่และโปรโมชันก่อนใคร</p>
+              <p className="text-primary-foreground/80">
+                รับอัปเดตสินค้าใหม่และโปรโมชันก่อนใคร
+              </p>
             </div>
             <div className="flex w-full gap-2 lg:w-auto">
-              <input type="email" placeholder="กรอกอีเมลของคุณ" className="flex-1 rounded-lg border border-primary-foreground/20 bg-primary-foreground/10 px-4 py-2 text-primary-foreground placeholder:text-primary-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary-foreground/30 lg:w-64" />
+              <input
+                type="email"
+                placeholder="กรอกอีเมลของคุณ"
+                className="flex-1 rounded-lg border border-primary-foreground/20 bg-primary-foreground/10 px-4 py-2 text-primary-foreground placeholder:text-primary-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary-foreground/30 lg:w-64"
+              />
               <Button variant="secondary">สมัครรับข่าวสาร</Button>
             </div>
           </CardContent>

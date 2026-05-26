@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Store, Search, ShoppingCart, Menu, User, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useCart } from "@/lib/store/cart-context";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +27,7 @@ const navLinks = [
 export function StoreHeader() {
   const pathname = usePathname();
   const router = useRouter();
+  const { totalItems } = useCart();
   const [user, setUser] = useState<{ name: string; email: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -155,7 +157,11 @@ export function StoreHeader() {
             <Button variant="ghost" size="icon" className="relative" asChild>
               <Link href="/cart">
                 <ShoppingCart className="h-5 w-5" />
-                <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] font-medium text-primary-foreground flex items-center justify-center">3</span>
+                {totalItems > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium text-primary-foreground">
+                    {totalItems}
+                  </span>
+                )}
                 <span className="sr-only">ตะกร้าสินค้า</span>
               </Link>
             </Button>
