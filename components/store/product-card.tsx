@@ -1,0 +1,53 @@
+import Link from "next/link";
+import Image from "next/image";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ShoppingCart } from "lucide-react";
+
+interface Product {
+  id: string;
+  name: string;
+  slug: string;
+  price: number;
+  compareAtPrice?: number;
+  image: string;
+  category: string;
+  badge?: string;
+}
+
+export function ProductCard({ product }: { product: Product }) {
+  const discount = product.compareAtPrice ? Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100) : 0;
+
+  return (
+    <Card className="group overflow-hidden">
+      <Link href={`/products/${product.slug}`}>
+        <div className="relative aspect-square bg-muted overflow-hidden">
+          <Image src={product.image} alt={product.name} fill className="object-cover transition-transform group-hover:scale-105" />
+          {product.badge && (
+            <Badge className="absolute top-3 left-3" variant={product.badge === "Sale" ? "destructive" : "default"}>
+              {product.badge}
+            </Badge>
+          )}
+          {discount > 0 && <Badge className="absolute top-3 right-3 bg-red-500 text-white">-{discount}%</Badge>}
+        </div>
+      </Link>
+      <CardContent className="p-4">
+        <p className="text-xs text-muted-foreground mb-1">{product.category}</p>
+        <Link href={`/products/${product.slug}`}>
+          <h3 className="font-medium text-sm mb-2 line-clamp-2 hover:text-primary transition-colors">{product.name}</h3>
+        </Link>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="font-bold">${product.price.toFixed(2)}</span>
+            {product.compareAtPrice && <span className="text-sm text-muted-foreground line-through">${product.compareAtPrice.toFixed(2)}</span>}
+          </div>
+          <Button size="icon" variant="outline" className="h-8 w-8">
+            <ShoppingCart className="h-4 w-4" />
+            <span className="sr-only">Add to cart</span>
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

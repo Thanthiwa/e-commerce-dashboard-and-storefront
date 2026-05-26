@@ -1,0 +1,129 @@
+import { NextRequest, NextResponse } from "next/server";
+import { connectDB } from "@/lib/db/connect";
+import Product from "@/lib/db/models/Product";
+import Category from "@/lib/db/models/Category";
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await connectDB();
+    const { id } = await params;
+
+    // Try to find by ID first, then by slug
+    let product = await Product.findById(id).populate("category", "name slug").lean();
+    
+    if (!product) {
+      product = await Product.findOne({ slug: id }).populate("category", "name slug").lean();
+    }
+
+    if (!product) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(product);
+  } catch (error) {
+    console.error("Product GET error:", error);
+    return NextResponse.json({ error: "Failed to fetch product" }, { status: 500 });
+  }
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await connectDB();
+    const { id } = await params;
+    const body = await request.json();
+
+    const existingProduct = await Product.findById(id);
+    if (!existingProduct) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
+    // Check if SKU is being changed to an existing one
+    if (body.sku && body.sku !== existingProduct.sku) {
+      const skuExists = await Product.findOne({ sku: body.sku, _id: { $ne: id } });
+      if (skuExists) {
+        return NextResponse.json(
+          { error: "A product with this SKU already exists" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Update slug if name changed
+    if (body.name && body.name !== existingProduct.name && !body.slug) {
+      body.slug = body.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
+      
+      // Ensure unique slug
+      const slugExists = await Product.findOne({ slug: body.slug, _id: { $ne: id } });
+      if (slugExists) {
+        body.slug = `${body.slug}-${Date.now()}`;
+      }
+    }
+
+    // Process attributes if provided
+    if (body.attributes && Array.isArray(body.attributes)) {
+      body.attributes = body.attributes.map((attr: Record<string, unknown>) => ({
+        key: String(attr.key || "").toLowerCase().replace(/\s+/g, "_"),
+        label: String(attr.label || attr.key || ""),
+        type: attr.type || "text",
+        value: attr.value,
+        options: attr.options || [],
+        unit: attr.unit || "",
+        required: Boolean(attr.required),
+      }));
+    }
+
+    // Handle category change
+    if (body.category && body.category.toString() !== existingProduct.category.toString()) {
+      // Decrement old category count
+      await Category.findByIdAndUpdate(existingProduct.category, { $inc: { productCount: -1 } });
+      // Increment new category count
+      await Category.findByIdAndUpdate(body.category, { $inc: { productCount: 1 } });
+    }
+
+    const updatedProduct = await Product.findByIdAndUpdate(
+      id,
+      { $set: body },
+      { new: true, runValidators: true }
+    ).populate("category", "name slug");
+
+    return NextResponse.json(updatedProduct);
+  } catch (error) {
+    console.error("Product PUT error:", error);
+    const message = error instanceof Error ? error.message : "Failed to update product";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await connectDB();
+    const { id } = await params;
+
+    const product = await Product.findById(id);
+    if (!product) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
+    // Decrement category product count
+    await Category.findByIdAndUpdate(product.category, { $inc: { productCount: -1 } });
+
+    await Product.findByIdAndDelete(id);
+
+    return NextResponse.json({ message: "Product deleted successfully" });
+  } catch (error) {
+    console.error("Product DELETE error:", error);
+    return NextResponse.json({ error: "Failed to delete product" }, { status: 500 });
+  }
+}

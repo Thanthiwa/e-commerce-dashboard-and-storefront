@@ -1,0 +1,198 @@
+"use client";
+
+import { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search, MoreHorizontal, Eye, Truck, XCircle, CheckCircle, RefreshCcw, Filter } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+// Demo data
+const orders = [
+  { id: "ORD-240521-0001", customer: "John Smith", email: "john@example.com", items: 3, total: 299.99, status: "delivered", payment: "paid", date: "2024-05-21" },
+  { id: "ORD-240521-0002", customer: "Sarah Johnson", email: "sarah@example.com", items: 1, total: 149.5, status: "shipped", payment: "paid", date: "2024-05-21" },
+  { id: "ORD-240520-0015", customer: "Michael Brown", email: "michael@example.com", items: 2, total: 89.99, status: "processing", payment: "paid", date: "2024-05-20" },
+  { id: "ORD-240520-0014", customer: "Emily Davis", email: "emily@example.com", items: 5, total: 459.0, status: "pending", payment: "pending", date: "2024-05-20" },
+  { id: "ORD-240519-0022", customer: "David Wilson", email: "david@example.com", items: 2, total: 199.99, status: "cancelled", payment: "refunded", date: "2024-05-19" },
+  { id: "ORD-240519-0021", customer: "Lisa Anderson", email: "lisa@example.com", items: 1, total: 79.99, status: "delivered", payment: "paid", date: "2024-05-19" },
+  { id: "ORD-240518-0018", customer: "James Taylor", email: "james@example.com", items: 4, total: 329.99, status: "delivered", payment: "paid", date: "2024-05-18" },
+  { id: "ORD-240518-0017", customer: "Jennifer Martinez", email: "jennifer@example.com", items: 2, total: 159.99, status: "refunded", payment: "refunded", date: "2024-05-18" },
+];
+
+const statusStyles: Record<string, string> = {
+  pending: "bg-yellow-500/10 text-yellow-500",
+  processing: "bg-blue-500/10 text-blue-500",
+  shipped: "bg-purple-500/10 text-purple-500",
+  delivered: "bg-emerald-500/10 text-emerald-500",
+  cancelled: "bg-red-500/10 text-red-500",
+  refunded: "bg-gray-500/10 text-gray-500",
+};
+
+const paymentStyles: Record<string, string> = {
+  pending: "bg-yellow-500/10 text-yellow-500",
+  paid: "bg-emerald-500/10 text-emerald-500",
+  failed: "bg-red-500/10 text-red-500",
+  refunded: "bg-gray-500/10 text-gray-500",
+};
+
+export default function OrdersPage() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  const filteredOrders = orders.filter((order) => {
+    const matchesSearch = order.id.toLowerCase().includes(searchQuery.toLowerCase()) || order.customer.toLowerCase().includes(searchQuery.toLowerCase()) || order.email.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === "all" || order.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  return (
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Orders</h1>
+        <p className="text-muted-foreground">Manage and track customer orders</p>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold">{orders.filter((o) => o.status === "pending").length}</div>
+            <p className="text-xs text-muted-foreground">Pending Orders</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold">{orders.filter((o) => o.status === "processing").length}</div>
+            <p className="text-xs text-muted-foreground">Processing</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold">{orders.filter((o) => o.status === "shipped").length}</div>
+            <p className="text-xs text-muted-foreground">Shipped</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold">{orders.filter((o) => o.status === "delivered").length}</div>
+            <p className="text-xs text-muted-foreground">Delivered</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input placeholder="Search orders..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="processing">Processing</SelectItem>
+                <SelectItem value="shipped">Shipped</SelectItem>
+                <SelectItem value="delivered">Delivered</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+                <SelectItem value="refunded">Refunded</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Orders Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>All Orders</CardTitle>
+          <CardDescription>
+            {filteredOrders.length} order{filteredOrders.length !== 1 ? "s" : ""} found
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Order</TableHead>
+                <TableHead>Customer</TableHead>
+                <TableHead className="text-center">Items</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Payment</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead className="w-[50px]"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredOrders.map((order) => (
+                <TableRow key={order.id}>
+                  <TableCell className="font-mono text-sm">{order.id}</TableCell>
+                  <TableCell>
+                    <div className="font-medium">{order.customer}</div>
+                    <div className="text-xs text-muted-foreground">{order.email}</div>
+                  </TableCell>
+                  <TableCell className="text-center">{order.items}</TableCell>
+                  <TableCell className="text-right font-medium">${order.total.toFixed(2)}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className={cn("capitalize", statusStyles[order.status])}>
+                      {order.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className={cn("capitalize", paymentStyles[order.payment])}>
+                      {order.payment}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{order.date}</TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem>
+                          <Eye className="mr-2 h-4 w-4" />
+                          View Details
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem>
+                          <Truck className="mr-2 h-4 w-4" />
+                          Mark as Shipped
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <CheckCircle className="mr-2 h-4 w-4" />
+                          Mark as Delivered
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-destructive">
+                          <XCircle className="mr-2 h-4 w-4" />
+                          Cancel Order
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <RefreshCcw className="mr-2 h-4 w-4" />
+                          Process Refund
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
