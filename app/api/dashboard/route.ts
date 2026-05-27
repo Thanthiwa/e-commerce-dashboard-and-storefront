@@ -146,6 +146,22 @@ function getGrowth(current: number, previous: number) {
   return Number((((current - previous) / previous) * 100).toFixed(1));
 }
 
+function getDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function getMonthStart(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function getMonthEnd(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
+}
+
 export async function GET() {
   try {
     await dbConnect();
@@ -155,6 +171,14 @@ export async function GET() {
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const prevThirtyDays = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
     const startOfYear = new Date(now.getFullYear(), 0, 1);
+    const startOfYearlyRevenue = new Date(now.getFullYear() - 3, 0, 1);
+    const latestRevenueOrder = await Order.findOne({ status: { $nin: ["cancelled", "refunded"] } })
+      .sort({ createdAt: -1 })
+      .select("createdAt")
+      .lean();
+    const dailyReferenceDate = latestRevenueOrder?.createdAt ? new Date(latestRevenueOrder.createdAt) : now;
+    const startOfDailyRevenue = getMonthStart(dailyReferenceDate);
+    const endOfDailyRevenue = getMonthEnd(dailyReferenceDate);
 
     const [
       currentRevenueResult,
@@ -200,22 +224,71 @@ export async function GET() {
     const currentRevenue = currentRevenueResult[0]?.total || 0;
     const previousRevenue = previousRevenueResult[0]?.total || 0;
 
-    const monthlyRevenueRaw = await Order.aggregate([
-      { $match: { status: { $nin: ["cancelled", "refunded"] }, createdAt: { $gte: startOfYear } } },
-      {
-        $group: {
-          _id: { $month: "$createdAt" },
-          revenue: { $sum: "$total" },
+    const [dailyRevenueRaw, monthlyRevenueRaw, yearlyRevenueRaw] = await Promise.all([
+      Order.aggregate([
+        {
+          $match: {
+            status: { $nin: ["cancelled", "refunded"] },
+            createdAt: { $gte: startOfDailyRevenue, $lte: endOfDailyRevenue },
+          },
         },
-      },
-      { $sort: { _id: 1 } },
+        {
+          $group: {
+            _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt", timezone: "Asia/Bangkok" } },
+            revenue: { $sum: "$total" },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ]),
+      Order.aggregate([
+        { $match: { status: { $nin: ["cancelled", "refunded"] }, createdAt: { $gte: startOfYear } } },
+        {
+          $group: {
+            _id: { $month: "$createdAt" },
+            revenue: { $sum: "$total" },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ]),
+      Order.aggregate([
+        { $match: { status: { $nin: ["cancelled", "refunded"] }, createdAt: { $gte: startOfYearlyRevenue } } },
+        {
+          $group: {
+            _id: { $year: "$createdAt" },
+            revenue: { $sum: "$total" },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ]),
     ]);
+
+    const dailyRevenueByDate = new Map(dailyRevenueRaw.map((item) => [String(item._id), Number(item.revenue || 0)]));
+    const daysInDailyMonth = endOfDailyRevenue.getDate();
+    const dailyRevenue = Array.from({ length: daysInDailyMonth }, (_, index) => {
+      const date = new Date(startOfDailyRevenue);
+      date.setDate(startOfDailyRevenue.getDate() + index);
+
+      return {
+        label: date.toLocaleDateString("th-TH", { day: "numeric", month: "short" }),
+        revenue: dailyRevenueByDate.get(getDateKey(date)) || 0,
+      };
+    });
 
     const monthlyRevenueByMonth = new Map(monthlyRevenueRaw.map((item) => [Number(item._id), Number(item.revenue || 0)]));
     const monthlyRevenue = monthLabels.map((month, index) => ({
-      month,
+      label: month,
       revenue: monthlyRevenueByMonth.get(index + 1) || 0,
     }));
+
+    const yearlyRevenueByYear = new Map(yearlyRevenueRaw.map((item) => [Number(item._id), Number(item.revenue || 0)]));
+    const yearlyRevenue = Array.from({ length: 5 }, (_, index) => {
+      const year = now.getFullYear() - 3 + index;
+
+      return {
+        label: String(year + 543),
+        revenue: yearlyRevenueByYear.get(year) || 0,
+      };
+    });
 
     const salesByCategory = await Order.aggregate([
       { $match: { status: { $nin: ["cancelled", "refunded"] }, createdAt: { $gte: thirtyDaysAgo } } },
@@ -303,7 +376,9 @@ export async function GET() {
         value: totalCategoryRevenue > 0 ? Number(((category.revenue / totalCategoryRevenue) * 100).toFixed(1)) : 0,
         color: ["oklch(0.696 0.17 162.48)", "oklch(0.488 0.243 264.376)", "oklch(0.769 0.188 70.08)", "oklch(0.627 0.265 303.9)", "oklch(0.645 0.246 16.439)"][index],
       })),
+      dailyRevenue,
       monthlyRevenue,
+      yearlyRevenue,
       topProducts: topProducts.map((product) => ({
         id: String(product._id || product.name),
         name: product.name,

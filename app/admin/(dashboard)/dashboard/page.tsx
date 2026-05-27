@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -19,6 +20,13 @@ import { SalesByCategoryChart } from "@/components/admin/charts/sales-by-categor
 import { RecentOrdersTable } from "@/components/admin/tables/recent-orders-table";
 import { TopProductsTable } from "@/components/admin/tables/top-products-table";
 
+type RevenueView = "daily" | "monthly" | "yearly";
+
+type RevenuePoint = {
+  label: string;
+  revenue: number;
+};
+
 interface DashboardData {
   summary: {
     totalRevenue: number;
@@ -31,7 +39,9 @@ interface DashboardData {
     productsGrowth: number;
     averageOrderValue: number;
   };
-  monthlyRevenue: Array<{ month: string; revenue: number }>;
+  dailyRevenue: RevenuePoint[];
+  monthlyRevenue: RevenuePoint[];
+  yearlyRevenue: RevenuePoint[];
   salesByCategory: Array<{ name: string; value: number; revenue: number; orders: number; color?: string }>;
   recentOrders: Array<{
     id: string;
@@ -63,7 +73,9 @@ const emptyDashboard: DashboardData = {
     productsGrowth: 0,
     averageOrderValue: 0,
   },
+  dailyRevenue: [],
   monthlyRevenue: [],
+  yearlyRevenue: [],
   salesByCategory: [],
   recentOrders: [],
   topProducts: [],
@@ -99,6 +111,7 @@ function TrendValue({ value, icon = "arrow" }: { value: number; icon?: "arrow" |
 
 export default function DashboardPage() {
   const [dashboard, setDashboard] = useState<DashboardData>(emptyDashboard);
+  const [revenueView, setRevenueView] = useState<RevenueView>("monthly");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -136,6 +149,18 @@ export default function DashboardPage() {
   }
 
   const summary = dashboard.summary;
+  const revenueOptions: Array<{ value: RevenueView; label: string; description: string }> = [
+    { value: "daily", label: "รายวัน", description: "รายได้รายวันของเดือนล่าสุดที่มีคำสั่งซื้อ" },
+    { value: "monthly", label: "รายเดือน", description: "รายได้รายเดือนของปีนี้จากคำสั่งซื้อจริง" },
+    { value: "yearly", label: "รายปี", description: "รายได้รายปี 5 ปีล่าสุดจากคำสั่งซื้อจริง" },
+  ];
+  const activeRevenueOption = revenueOptions.find((option) => option.value === revenueView) || revenueOptions[1];
+  const revenueData =
+    revenueView === "daily"
+      ? dashboard.dailyRevenue
+      : revenueView === "yearly"
+        ? dashboard.yearlyRevenue
+        : dashboard.monthlyRevenue;
 
   return (
     <div className="space-y-6">
@@ -210,12 +235,28 @@ export default function DashboardPage() {
 
       <div className="grid gap-4 lg:grid-cols-7">
         <Card className="lg:col-span-4">
-          <CardHeader>
-            <CardTitle>ภาพรวมรายได้</CardTitle>
-            <CardDescription>รายได้รายเดือนของปีนี้จากคำสั่งซื้อจริง</CardDescription>
+          <CardHeader className="gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <CardTitle>ภาพรวมรายได้</CardTitle>
+              <CardDescription>{activeRevenueOption.description}</CardDescription>
+            </div>
+            <div className="flex rounded-md border bg-muted/30 p-1">
+              {revenueOptions.map((option) => (
+                <Button
+                  key={option.value}
+                  type="button"
+                  variant={revenueView === option.value ? "default" : "ghost"}
+                  size="sm"
+                  className="h-8 px-3"
+                  onClick={() => setRevenueView(option.value)}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
           </CardHeader>
           <CardContent>
-            <RevenueChart data={dashboard.monthlyRevenue} />
+            <RevenueChart data={revenueData} />
           </CardContent>
         </Card>
 

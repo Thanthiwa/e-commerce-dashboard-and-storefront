@@ -308,7 +308,7 @@ export default function ProductForm({ initialData, productId, simpleInventory = 
                   id="name"
                   value={formData.name}
                   onChange={(e) => handleChange("name", e.target.value)}
-                  placeholder="เช่น หูฟังบลูทูธไร้สาย"
+                  placeholder="เช่น ขนมปัง,โค๊ก 500ml"
                 />
               </div>
 
