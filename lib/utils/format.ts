@@ -74,15 +74,18 @@ export function formatRelativeTime(date: Date | string): string {
 }
 
 /**
- * Generate a slug from a string
+ * Generate a URL-safe slug from a string.
+ * Keeps Unicode letters/numbers so Thai category and product names remain valid.
  */
-export function generateSlug(text: string): string {
-  return text
+export function generateSlug(text: string, fallback = "item"): string {
+  const slug = text
     .toLowerCase()
     .trim()
-    .replace(/[^\w\s-]/g, "")
+    .replace(/[^\p{L}\p{M}\p{N}\s_-]/gu, "")
     .replace(/[\s_-]+/g, "-")
     .replace(/^-+|-+$/g, "");
+
+  return slug || `${fallback}-${Date.now()}`;
 }
 
 /**

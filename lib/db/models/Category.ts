@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
+import { generateSlug } from "@/lib/utils/format";
 
 export interface ICategory extends Document {
   _id: mongoose.Types.ObjectId;
@@ -63,10 +64,7 @@ CategorySchema.index({ parent: 1 });
 // Pre-validate hook to generate slug before validation runs
 CategorySchema.pre("validate", function () {
   if (this.isModified("name") && !this.slug) {
-    this.slug = this.name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "");
+    this.slug = generateSlug(this.name, "category");
   }
 });
 

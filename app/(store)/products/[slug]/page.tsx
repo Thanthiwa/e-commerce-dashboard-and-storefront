@@ -43,7 +43,10 @@ export default function ProductDetailPage() {
         const productData = {
           ...data,
           images: Array.isArray(data.images) && data.images.length ? data.images : [placeholderImage],
-          category: typeof data.category === "object" ? data.category : { name: data.category || "ไม่ระบุหมวดหมู่", slug: "" },
+          category:
+            data.category && typeof data.category === "object"
+              ? data.category
+              : { name: data.category || "ไม่ระบุหมวดหมู่", slug: "" },
           stock: data.quantity ?? 0,
           features:
             data.features?.length > 0
@@ -305,7 +308,10 @@ export default function ProductDetailPage() {
                   slug: relatedProduct.slug,
                   price: relatedProduct.price,
                   image: relatedProduct.images?.[0] || placeholderImage,
-                  category: typeof relatedProduct.category === "object" ? relatedProduct.category.name : relatedProduct.category,
+                  category:
+                    relatedProduct.category && typeof relatedProduct.category === "object"
+                      ? relatedProduct.category.name || "ไม่ระบุหมวดหมู่"
+                      : relatedProduct.category || "ไม่ระบุหมวดหมู่",
                   stock: relatedProduct.quantity ?? 0,
                 }}
               />

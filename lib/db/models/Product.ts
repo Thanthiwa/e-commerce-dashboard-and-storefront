@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
+import { generateSlug } from "@/lib/utils/format";
 
 export interface IProductVariant {
   name: string;
@@ -208,10 +209,7 @@ ProductSchema.index({ name: "text", description: "text", tags: "text" });
 // Pre-validate hook to generate slug before validation runs
 ProductSchema.pre("validate", function () {
   if (this.isModified("name") && !this.slug) {
-    this.slug = this.name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "");
+    this.slug = generateSlug(this.name, "product");
   }
 });
 

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/connect";
 import Product from "@/lib/db/models/Product";
 import Category from "@/lib/db/models/Category";
+import { generateSlug } from "@/lib/utils/format";
 
 export async function GET(
   request: NextRequest,
@@ -60,10 +61,7 @@ export async function PUT(
 
     // Update slug if name changed
     if (body.name && body.name !== existingProduct.name && !body.slug) {
-      body.slug = body.name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/(^-|-$)/g, "");
+      body.slug = generateSlug(String(body.name), "product");
       
       // Ensure unique slug
       const slugExists = await Product.findOne({ slug: body.slug, _id: { $ne: id } });

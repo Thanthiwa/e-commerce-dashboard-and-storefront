@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Search, MoreHorizontal, Pencil, Trash2, FolderTree } from "lucide-react";
@@ -35,18 +36,21 @@ const statusLabels: Record<string, string> = {
 export default function CategoriesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchCategories = async () => {
       setIsLoading(true);
       try {
-        const res = await fetch("/api/categories");
+        const res = await fetch("/api/categories?all=true");
         const data = await res.json();
         if (!res.ok) {
           throw new Error(data.error || "ไม่สามารถโหลดหมวดหมู่ได้");
@@ -65,6 +69,87 @@ export default function CategoriesPage() {
 
   const filteredCategories = categories.filter((category) => category.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
+  const handleEdit = (category: CategoryItem) => {
+    setEditingId(category._id);
+    setName(category.name);
+    setDescription(category.description || "");
+    setError(null);
+    setIsDialogOpen(true);
+  };
+
+  const handleDelete = (categoryId: string) => {
+    setDeletingId(categoryId);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleSave = async () => {
+    setError(null);
+    if (!name.trim()) {
+      setError("กรุณากรอกชื่อหมวดหมู่");
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const isEditing = editingId !== null;
+      const url = isEditing ? `/api/categories?id=${editingId}` : "/api/categories";
+      const method = isEditing ? "PUT" : "POST";
+      const body = { name: name.trim(), description: description.trim() };
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || (isEditing ? "ไม่สามารถแก้ไขหมวดหมู่ได้" : "ไม่สามารถสร้างหมวดหมู่ได้"));
+      }
+      if (isEditing) {
+        setCategories((prev) => prev.map((cat) => (cat._id === editingId ? data : cat)));
+      } else {
+        setCategories((prev) => [data, ...prev]);
+      }
+      setName("");
+      setDescription("");
+      setEditingId(null);
+      setIsDialogOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : (editingId !== null ? "ไม่สามารถแก้ไขหมวดหมู่ได้" : "ไม่สามารถสร้างหมวดหมู่ได้"));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingId) return;
+    setIsSaving(true);
+    try {
+      const res = await fetch(`/api/categories?id=${deletingId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "ไม่สามารถลบหมวดหมู่ได้");
+      }
+      setCategories((prev) => prev.filter((cat) => cat._id !== deletingId));
+      setIsDeleteDialogOpen(false);
+      setDeletingId(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "ไม่สามารถลบหมวดหมู่ได้");
+      setIsDeleteDialogOpen(false);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setEditingId(null);
+    setName("");
+    setDescription("");
+    setError(null);
+  };
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -75,15 +160,20 @@ export default function CategoriesPage() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={() => {
+              setEditingId(null);
+              setName("");
+              setDescription("");
+              setError(null);
+            }}>
               <Plus className="mr-2 h-4 w-4" />
               เพิ่มหมวดหมู่
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>เพิ่มหมวดหมู่ใหม่</DialogTitle>
-              <DialogDescription>สร้างหมวดหมู่ใหม่เพื่อจัดสินค้าให้เป็นระเบียบ</DialogDescription>
+              <DialogTitle>{editingId ? "แก้ไขหมวดหมู่" : "เพิ่มหมวดหมู่ใหม่"}</DialogTitle>
+              <DialogDescription>{editingId ? "แก้ไขรายละเอียดหมวดหมู่" : "สร้างหมวดหมู่ใหม่เพื่อจัดสินค้าให้เป็นระเบียบ"}</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               {error && (
@@ -95,44 +185,17 @@ export default function CategoriesPage() {
                 <Label htmlFor="name">ชื่อหมวดหมู่</Label>
                 <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="ชื่อหมวดหมู่" />
               </div>
-              {/* Slug is auto-generated by the backend; hidden from the UI */}
               <div className="grid gap-2">
                 <Label htmlFor="description">คำอธิบาย</Label>
                 <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="คำอธิบายหมวดหมู่" />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              <Button variant="outline" onClick={handleCloseDialog}>
                 ยกเลิก
               </Button>
-                <Button type="button" disabled={isSaving} onClick={async () => {
-                setError(null);
-                if (!name.trim()) {
-                  setError("กรุณากรอกชื่อหมวดหมู่");
-                  return;
-                }
-                setIsSaving(true);
-                try {
-                  const res = await fetch("/api/categories", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ name: name.trim(), description: description.trim() }),
-                  });
-                  const data = await res.json();
-                  if (!res.ok) {
-                    throw new Error(data.error || "ไม่สามารถสร้างหมวดหมู่ได้");
-                  }
-                  setCategories((prev) => [data, ...prev]);
-                  setName("");
-                  setDescription("");
-                  setIsDialogOpen(false);
-                } catch (err) {
-                  setError(err instanceof Error ? err.message : "ไม่สามารถสร้างหมวดหมู่ได้");
-                } finally {
-                  setIsSaving(false);
-                }
-              }}>
-                {isSaving ? "กำลังบันทึก..." : "สร้างหมวดหมู่"}
+              <Button type="button" disabled={isSaving} onClick={handleSave}>
+                {isSaving ? "กำลังบันทึก..." : (editingId ? "บันทึกการแก้ไข" : "สร้างหมวดหมู่")}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -170,11 +233,11 @@ export default function CategoriesPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleEdit(category)}>
                     <Pencil className="mr-2 h-4 w-4" />
                     แก้ไข
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="text-destructive">
+                  <DropdownMenuItem onClick={() => handleDelete(category._id)} className="text-destructive">
                     <Trash2 className="mr-2 h-4 w-4" />
                     ลบ
                   </DropdownMenuItem>
@@ -195,6 +258,22 @@ export default function CategoriesPage() {
           </Card>
         ))}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ลบหมวดหมู่</AlertDialogTitle>
+            <AlertDialogDescription>
+              คุณแน่ใจหรือว่าต้องการลบหมวดหมู่นี้? การกระทำนี้ไม่สามารถยกเลิกได้
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+          <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90" disabled={isSaving}>
+            {isSaving ? "กำลังลบ..." : "ลบ"}
+          </AlertDialogAction>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

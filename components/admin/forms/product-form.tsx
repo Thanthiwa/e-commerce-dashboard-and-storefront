@@ -55,9 +55,10 @@ interface ProductFormData {
 interface ProductFormProps {
   initialData?: Partial<ProductFormData>;
   productId?: string;
+  simpleInventory?: boolean;
 }
 
-export default function ProductForm({ initialData, productId }: ProductFormProps) {
+export default function ProductForm({ initialData, productId, simpleInventory = false }: ProductFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -65,6 +66,7 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
   const [categories, setCategories] = useState<Category[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [priceInput, setPriceInput] = useState(String(initialData?.price ?? 0));
 
   const [formData, setFormData] = useState<ProductFormData>({
     name: "",
@@ -135,16 +137,21 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
   }, []);
 
   // Generate SKU from name
-  const generateSku = () => {
-    if (!formData.name) return;
-    const prefix = formData.name
+  const createSku = (name: string) => {
+    const prefix = name
       .split(" ")
       .map((w) => w[0])
       .join("")
+      .replace(/[^a-z0-9]/gi, "")
       .toUpperCase()
-      .slice(0, 3);
+      .slice(0, 3) || "SKU";
     const random = Math.random().toString(36).substring(2, 6).toUpperCase();
-    setFormData((prev) => ({ ...prev, sku: `${prefix}-${random}` }));
+    return `${prefix}-${random}`;
+  };
+
+  const generateSku = () => {
+    if (!formData.name) return;
+    setFormData((prev) => ({ ...prev, sku: createSku(prev.name) }));
   };
 
   // Handle form field changes
@@ -181,15 +188,21 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
     setIsSaving(true);
 
     try {
+      const normalizedFormData = {
+        ...formData,
+        price: priceInput === "" ? 0 : Number(priceInput),
+        sku: formData.sku.trim() || (simpleInventory ? createSku(formData.name || "SKU") : formData.sku),
+      };
+
       // Validation
-      if (!formData.name.trim()) throw new Error("กรุณากรอกชื่อสินค้า");
-      if (!formData.sku.trim()) throw new Error("กรุณากรอก SKU");
-      if (!formData.category) throw new Error("กรุณาเลือกหมวดหมู่");
-      if (formData.price < 0) throw new Error("ราคาต้องไม่ติดลบ");
+      if (!normalizedFormData.name.trim()) throw new Error("กรุณากรอกชื่อสินค้า");
+      if (!normalizedFormData.sku.trim()) throw new Error("กรุณากรอก SKU");
+      if (!normalizedFormData.category) throw new Error("กรุณาเลือกหมวดหมู่");
+      if (normalizedFormData.price < 0) throw new Error("ราคาต้องไม่ติดลบ");
 
       const url = productId ? `/api/products/${productId}` : "/api/products";
       const method = productId ? "PUT" : "POST";
-      const payload = { ...formData } as Record<string, unknown>;
+      const payload = { ...normalizedFormData } as Record<string, unknown>;
       delete payload.attributes;
       delete payload.specifications;
 
@@ -321,8 +334,11 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
                       id="price"
                       type="number"
                       step="0.01"
-                      value={formData.price}
-                      onChange={(e) => handleChange("price", parseFloat(e.target.value) || 0)}
+                      value={priceInput}
+                      onChange={(e) => {
+                        setPriceInput(e.target.value);
+                        handleChange("price", e.target.value === "" ? 0 : Number(e.target.value));
+                      }}
                       className="pl-7"
                     />
                   </div>
@@ -460,6 +476,8 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
               <CardTitle>คลังสินค้า</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {!simpleInventory && (
+                <>
               <div className="space-y-2">
                 <Label htmlFor="sku">SKU *</Label>
                 <div className="flex gap-2">
@@ -493,8 +511,10 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
               </div>
 
               <Separator />
+                </>
+              )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className={simpleInventory ? "space-y-2" : "grid grid-cols-2 gap-4"}>
                 <div className="space-y-2">
                 <Label htmlFor="quantity">จำนวน</Label>
                   <Input
@@ -505,6 +525,7 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
                   />
                 </div>
 
+                {!simpleInventory && (
                 <div className="space-y-2">
                   <Label htmlFor="lowStockThreshold">แจ้งเตือนสต็อกต่ำ</Label>
                   <Input
@@ -516,14 +537,15 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
                     }
                   />
                 </div>
+                )}
               </div>
 
-              {formData.quantity <= formData.lowStockThreshold && formData.quantity > 0 && (
+              {!simpleInventory && formData.quantity <= formData.lowStockThreshold && formData.quantity > 0 && (
                 <div className="rounded bg-yellow-500/10 px-3 py-2 text-sm text-yellow-600">
                   สต็อกใกล้หมด
                 </div>
               )}
-              {formData.quantity === 0 && (
+              {!simpleInventory && formData.quantity === 0 && (
                 <div className="rounded bg-red-500/10 px-3 py-2 text-sm text-red-600">
                   สินค้าหมด
                 </div>

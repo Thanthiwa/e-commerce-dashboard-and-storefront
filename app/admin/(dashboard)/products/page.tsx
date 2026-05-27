@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, Search, MoreHorizontal, Pencil, Trash2, Eye, Filter } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Pencil, Trash2, Eye, Filter, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/format";
 
@@ -18,6 +19,7 @@ interface AdminProduct {
   sku: string;
   price: number;
   quantity: number;
+  lowStockThreshold: number;
   category: string;
   status: string;
   slug: string;
@@ -62,7 +64,11 @@ export default function ProductsPage() {
             sku: product.sku,
             price: product.price,
             quantity: product.quantity ?? 0,
-            category: typeof product.category === "object" ? product.category.name : product.category || "ไม่ระบุหมวดหมู่",
+            lowStockThreshold: product.lowStockThreshold ?? 10,
+            category:
+              product.category && typeof product.category === "object"
+                ? product.category.name || "ไม่ระบุหมวดหมู่"
+                : product.category || "ไม่ระบุหมวดหมู่",
             status: product.status || "draft",
           }))
         );
@@ -83,6 +89,12 @@ export default function ProductsPage() {
         product.sku.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [products, searchQuery]);
+
+  const lowStockProducts = useMemo(() => {
+    return products.filter(
+      (product) => product.lowStockThreshold > 0 && product.quantity < product.lowStockThreshold
+    );
+  }, [products]);
 
   const deleteProduct = async (productId: string) => {
     if (!confirm("คุณแน่ใจหรือไม่ว่าต้องการลบสินค้านี้?")) {
@@ -131,6 +143,34 @@ export default function ProductsPage() {
         </CardContent>
       </Card>
 
+      {!isLoading && !error && lowStockProducts.length > 0 && (
+        <Alert className="border-amber-200 bg-amber-50 text-amber-900">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>แจ้งเตือนสต็อกต่ำ</AlertTitle>
+          <AlertDescription>
+            <div className="flex flex-col gap-2">
+              <p>มีสินค้า {lowStockProducts.length} รายการที่จำนวนต่ำกว่าค่าที่ตั้งไว้</p>
+              <div className="flex flex-wrap gap-2">
+                {lowStockProducts.slice(0, 6).map((product) => (
+                  <Link
+                    key={product._id}
+                    href={`/admin/products/${product._id}/edit`}
+                    className="rounded-md border border-amber-200 bg-white px-2.5 py-1 text-xs font-medium text-amber-900 transition-colors hover:bg-amber-100"
+                  >
+                    {product.name}: เหลือ {product.quantity} / ตั้งไว้ {product.lowStockThreshold}
+                  </Link>
+                ))}
+                {lowStockProducts.length > 6 && (
+                  <span className="px-2.5 py-1 text-xs text-amber-800">
+                    และอีก {lowStockProducts.length - 6} รายการ
+                  </span>
+                )}
+              </div>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>สินค้าทั้งหมด</CardTitle>
@@ -164,7 +204,24 @@ export default function ProductsPage() {
                     <TableCell>{product.category}</TableCell>
                     <TableCell className="text-right">{formatCurrency(product.price)}</TableCell>
                     <TableCell className="text-right">
-                      <span className={cn(product.quantity === 0 ? "text-red-500" : product.quantity <= 10 ? "text-yellow-500" : "")}>{product.quantity}</span>
+                      <div className="flex flex-col items-end gap-1">
+                        <span
+                          className={cn(
+                            product.quantity === 0
+                              ? "text-red-500"
+                              : product.quantity < product.lowStockThreshold
+                                ? "text-yellow-500"
+                                : ""
+                          )}
+                        >
+                          {product.quantity}
+                        </span>
+                        {product.lowStockThreshold > 0 && product.quantity < product.lowStockThreshold && (
+                          <Badge variant="secondary" className="bg-amber-500/10 text-amber-600">
+                            สต็อกต่ำ
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary" className={cn(statusStyles[product.status])}>

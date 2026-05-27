@@ -128,8 +128,11 @@ export default function ProductsPage() {
           price: product.price,
           compareAtPrice: product.compareAtPrice,
           images: Array.isArray(product.images) && product.images.length ? product.images : ["/placeholder.svg?height=300&width=300"],
-          category: typeof product.category === "object" ? product.category.name : product.category || "ไม่ระบุหมวดหมู่",
-          categoryId: typeof product.category === "object" ? product.category._id : product.category || "",
+          category:
+            product.category && typeof product.category === "object"
+              ? product.category.name || "ไม่ระบุหมวดหมู่"
+              : product.category || "ไม่ระบุหมวดหมู่",
+          categoryId: product.category && typeof product.category === "object" ? product.category._id : product.category || "",
           status: product.status,
           quantity: product.quantity ?? 0,
           tags: product.tags || [],

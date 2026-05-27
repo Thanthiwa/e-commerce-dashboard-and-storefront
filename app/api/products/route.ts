@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
     if (!body.name || !String(body.name).trim()) {
       return NextResponse.json({ error: "Product name is required" }, { status: 400 });
     }
-    body.slug = generateSlug(String(body.name));
+    body.slug = generateSlug(String(body.name), "product");
 
     // Ensure unique slug (append timestamp if needed)
     const existing = await Product.findOne({ slug: body.slug });
