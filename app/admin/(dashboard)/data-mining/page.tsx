@@ -177,7 +177,6 @@ export default function DataMiningPage() {
     [sales.salesTrend]
   );
 
-  const bestSegment = segments.segments[0];
   const topCategoryRevenue = sales.salesByCategory[0]?.revenue || 0;
 
   if (isLoading) {
@@ -298,52 +297,14 @@ export default function DataMiningPage() {
         </Card>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>กลุ่มลูกค้าที่ควรโฟกัส</CardTitle>
-            <CardDescription>
-              {bestSegment ? `กลุ่มทำรายได้สูงสุดคือ ${bestSegment.name}` : "ยังไม่มีข้อมูลกลุ่มลูกค้า"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>กลุ่ม</TableHead>
-                  <TableHead className="text-right">ลูกค้า</TableHead>
-                  <TableHead className="text-right">รายได้</TableHead>
-                  <TableHead className="text-right">สัดส่วน</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {segments.segments.slice(0, 7).map((segment) => (
-                  <TableRow key={segment.name}>
-                    <TableCell className="font-medium">{segment.name}</TableCell>
-                    <TableCell className="text-right">{formatNumber(segment.count)}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(segment.totalRevenue)}</TableCell>
-                    <TableCell className="text-right">{formatPercent(segment.percentage)}</TableCell>
-                  </TableRow>
-                ))}
-                {segments.segments.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
-                      ยังไม่มีข้อมูลกลุ่มลูกค้า
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-
+      <div>
         <Card>
           <CardHeader>
             <CardTitle>สินค้าที่มักซื้อคู่กัน</CardTitle>
             <CardDescription>ใช้ช่วยจัดโปรโมชันหรือแนะนำสินค้าเพิ่มในร้าน</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {recommendations.frequentlyBoughtTogether.slice(0, 8).map((pair, index) => {
+            {recommendations.frequentlyBoughtTogether.slice(0, 10).map((pair, index) => {
               const productNames = pair.products.map((product) => product.name || "Unknown").join(" + ");
               return (
                 <div key={`${productNames}-${index}`} className="flex items-center justify-between gap-4 rounded-md border p-3">
