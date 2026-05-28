@@ -14,6 +14,8 @@ import { formatCurrency } from "@/lib/utils/format";
 export default function CartPage() {
   const { items, removeItem, updateItemStock, updateQuantity, clearCart, totalPrice } =
     useCart();
+  const [quantityErrors, setQuantityErrors] = useState<Record<string, string>>({});
+  const [quantityInputs, setQuantityInputs] = useState<Record<string, string>>({});
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const stockSyncItems = useMemo(
     () => items.map((item) => ({ id: item.id, slug: item.slug })),
@@ -127,7 +129,75 @@ export default function CartPage() {
                       >
                         <Minus className="h-3 w-3" />
                       </Button>
-                      <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+                      <div>
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          className="w-16 text-center text-sm font-medium p-0"
+                          value={quantityInputs[item.id] ?? String(item.quantity)}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            // allow empty string while typing
+                            if (raw === "") {
+                              setQuantityInputs((s) => ({ ...s, [item.id]: "" }));
+                              setQuantityErrors((s) => {
+                                const copy = { ...s };
+                                delete copy[item.id];
+                                return copy;
+                              });
+                              return;
+                            }
+
+                            // accept only digits during typing
+                            if (!/^[0-9]*$/.test(raw)) return;
+
+                            setQuantityInputs((s) => ({ ...s, [item.id]: raw }));
+
+                            const v = parseInt(raw || "0", 10);
+                            if (item.stock !== undefined && !Number.isNaN(v) && v > item.stock) {
+                              setQuantityErrors((s) => ({ ...s, [item.id]: `มากกว่าจำนวนในสต็อก (${item.stock})` }));
+                            } else {
+                              setQuantityErrors((s) => {
+                                const copy = { ...s };
+                                delete copy[item.id];
+                                return copy;
+                              });
+                            }
+                          }}
+                          onBlur={(e) => {
+                            const raw = e.target.value;
+                            let v = parseInt(raw, 10);
+                            if (Number.isNaN(v) || v < 1) v = 1;
+                            if (item.stock !== undefined && v > item.stock) v = item.stock;
+                            updateQuantity(item.id, v);
+                            setQuantityInputs((s) => ({ ...s, [item.id]: String(v) }));
+                            setQuantityErrors((s) => {
+                              const copy = { ...s };
+                              delete copy[item.id];
+                              return copy;
+                            });
+                          }}
+                          onKeyDown={(e) => {
+                            // allow control keys and digits only
+                            if (
+                              e.key === "Backspace" ||
+                              e.key === "Delete" ||
+                              e.key === "ArrowLeft" ||
+                              e.key === "ArrowRight" ||
+                              e.key === "Tab"
+                            ) {
+                              return;
+                            }
+                            if (!/^[0-9]$/.test(e.key)) {
+                              e.preventDefault();
+                            }
+                          }}
+                        />
+                        {quantityErrors[item.id] && (
+                          <p className="mt-1 text-xs text-destructive">{quantityErrors[item.id]}</p>
+                        )}
+                      </div>
                       <Button
                         type="button"
                         variant="outline"

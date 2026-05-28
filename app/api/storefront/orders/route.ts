@@ -121,7 +121,27 @@ export async function POST(request: NextRequest) {
     const tax = subtotal * 0.08;
     const discount = 0;
     const total = subtotal + shipping + tax - discount;
-    const orderNumber = await (Order as unknown as { generateOrderNumber: () => Promise<string> }).generateOrderNumber();
+    // Allow optional client-supplied orderNumber (must be unique); otherwise generate one
+    const clientOrderNumber = typeof body.orderNumber === "string" ? body.orderNumber.trim() : "";
+    let orderNumber: string;
+
+    if (clientOrderNumber) {
+      // basic validation: non-empty and reasonable length
+      if (clientOrderNumber.length < 3 || clientOrderNumber.length > 64) {
+        return NextResponse.json({ error: "เลขที่สั่งซื้อไม่ถูกต้อง" }, { status: 400 });
+      }
+
+      // ensure uniqueness
+      const existing = await Order.findOne({ orderNumber: clientOrderNumber });
+      if (existing) {
+        return NextResponse.json({ error: "หมายเลขคำสั่งซื้อถูกใช้งานแล้ว" }, { status: 400 });
+      }
+
+      orderNumber = clientOrderNumber;
+    } else {
+      orderNumber = await (Order as unknown as { generateOrderNumber: () => Promise<string> }).generateOrderNumber();
+    }
+
     const paymentReference = paymentMethod === "qr_code" ? `QR-${orderNumber}` : undefined;
 
     const order = new Order({

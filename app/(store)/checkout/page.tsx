@@ -47,25 +47,18 @@ const emptyShippingAddress = {
 };
 
 function PaymentQrCode({ amount, reference }: { amount: number; reference: string }) {
-  const cells = Array.from({ length: 121 }, (_, index) => {
-    const row = Math.floor(index / 11);
-    const col = index % 11;
-    const inFinder =
-      (row < 4 && col < 4) ||
-      (row < 4 && col > 6) ||
-      (row > 6 && col < 4);
-    const hashed = (row * 17 + col * 31 + reference.length * 7) % 5;
-    return inFinder || hashed === 0 || hashed === 2;
-  });
-
+  // Uses a static QR image placed at `public/qr.png`.
+  // Place your desired QR image there (or change the path below).
   return (
-    <div className="rounded-md border bg-white p-3 text-slate-950">
-      <div className="grid h-36 w-36 grid-cols-11 gap-0.5">
-        {cells.map((filled, index) => (
-          <div key={index} className={filled ? "bg-slate-950" : "bg-white"} />
-        ))}
-      </div>
-      <div className="mt-3 text-center text-xs font-medium">{formatCurrency(amount)}</div>
+    <div className="flex flex-col items-center gap-3">
+      <Image
+        src="/qr.png"
+        alt="QR Code"
+        width={144}
+        height={144}
+        className="rounded-md border bg-white object-cover"
+      />
+      <div className="mt-1 text-center text-xs font-medium">{formatCurrency(amount)}</div>
       <div className="text-center text-[11px] text-slate-500">{reference}</div>
     </div>
   );
@@ -248,6 +241,7 @@ export default function CheckoutPage() {
     const formData = new FormData(event.currentTarget);
     const selectedPaymentMethod = String(formData.get("paymentMethod") || paymentMethod || "cod");
     const notes = String(formData.get("notes") || "").trim();
+    const orderNumberInput = String(formData.get("orderNumber") || "").trim();
 
     if (!fullName || !phone || !address || !city || !state || !postalCode || !country) {
       setError("กรุณากรอกข้อมูลจัดส่งให้ครบถ้วน");
@@ -282,6 +276,7 @@ export default function CheckoutPage() {
           })),
           paymentMethod: selectedPaymentMethod,
           paymentSlipUrl: selectedPaymentMethod === "qr_code" ? finalPaymentSlipUrl : undefined,
+          orderNumber: orderNumberInput || undefined,
           notes,
           shippingAddress: {
             fullName,
@@ -624,6 +619,13 @@ export default function CheckoutPage() {
                 </span>
               </label>
               <div className="space-y-2">
+                <Label htmlFor="orderNumber">ระบุหมายเลขคำสั่งซื้อ (ไม่จำเป็น)</Label>
+                <Input
+                  id="orderNumber"
+                  name="orderNumber"
+                  placeholder="ตัวอย่าง: ORD-230528-0001 หรือเลขตัวเอง"
+                />
+
                 <Label htmlFor="notes">หมายเหตุ</Label>
                 <Textarea id="notes" name="notes" placeholder="รายละเอียดเพิ่มเติมสำหรับร้านค้า" />
               </div>
