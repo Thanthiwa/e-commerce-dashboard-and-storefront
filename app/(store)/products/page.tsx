@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -98,7 +98,7 @@ function FilterSidebar({
   );
 }
 
-export default function ProductsPage() {
+function ProductsContent() {
   const searchParams = useSearchParams();
   const [products, setProducts] = useState<StoreProduct[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -312,5 +312,21 @@ export default function ProductsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="container mx-auto px-4 py-8">
+          <Card>
+            <CardContent className="py-20 text-center text-muted-foreground">กำลังโหลดสินค้า...</CardContent>
+          </Card>
+        </div>
+      }
+    >
+      <ProductsContent />
+    </Suspense>
   );
 }
