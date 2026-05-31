@@ -9,7 +9,7 @@ function getSecretKey() {
   return new TextEncoder().encode(AUTH_SECRET);
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow public auth routes
