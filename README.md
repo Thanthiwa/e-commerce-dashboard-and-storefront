@@ -44,19 +44,22 @@ It is divided into two main parts: the **Customer Storefront** and the **Admin D
 
    
 2. **Install dependencies:**
+   ```bash
    npm install
 
-3. **Set up Environment Variables:**
+4. **Set up Environment Variables:**
+    ```bash
    Create a .env or .env.local file in the root directory and add your connection strings
    MONGODB_URI=your_mongodb_connection_string
-NEXT_PUBLIC_API_URL=http://localhost:3000
+   NEXT_PUBLIC_API_URL=http://localhost:3000
 
-4. **Run the development server:**
-Bash
-npm run dev
+6. **Run the development server:**
+   ```bash
+   npm run dev
 
-5. **Open your browser:**
-Navigate to http://localhost:3000 to view the application.
+7. **Open your browser:**
+   ```bash
+   Navigate to http://localhost:3000 to view the application.
 
 🧠 Algorithms Used (อัลกอริทึมที่ใช้ในระบบ)
 Market Basket Analysis (Apriori Algorithm): Used to calculate Support, Confidence, and Lift to find relationships between products.
