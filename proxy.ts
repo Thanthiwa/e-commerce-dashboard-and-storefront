@@ -17,6 +17,14 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Public storefront reads should stay accessible without an admin session.
+  if (
+    request.method === "GET" &&
+    (pathname.startsWith("/api/products") || pathname.startsWith("/api/categories"))
+  ) {
+    return NextResponse.next();
+  }
+
   // Check if it's an admin page or protected API route
   const isAdminPage = pathname.startsWith("/admin");
   // Assuming these are protected API routes
