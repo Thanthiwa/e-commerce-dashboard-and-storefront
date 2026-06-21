@@ -41,22 +41,21 @@ It is divided into two main parts: the **Customer Storefront** and the **Admin D
    ```bash
    git clone [https://github.com/Maitvplay/e-commerce-dashboard-and-storefront.git](https://github.com/Maitvplay/e-commerce-dashboard-and-storefront.git)
    cd e-commerce-dashboard-and-storefront
-Install dependencies:
 
-Bash
-npm install
-Set up Environment Variables:
-Create a .env or .env.local file in the root directory and add your connection strings:
+   
+2. **Install dependencies:**
+   npm install
 
-ข้อมูลโค้ด
-MONGODB_URI=your_mongodb_connection_string
+3. **Set up Environment Variables:**
+   Create a .env or .env.local file in the root directory and add your connection strings
+   MONGODB_URI=your_mongodb_connection_string
 NEXT_PUBLIC_API_URL=http://localhost:3000
-# Add any other required environment variables here
-Run the development server:
 
+4. **Run the development server:**
 Bash
 npm run dev
-Open your browser:
+
+5. **Open your browser:**
 Navigate to http://localhost:3000 to view the application.
 
 🧠 Algorithms Used (อัลกอริทึมที่ใช้ในระบบ)
